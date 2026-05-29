@@ -1,7 +1,10 @@
 .env
 .env*.local
 .next
+.next*
 node_modules
 logs
 *.log
 .DS_Store
+.vercel
+.env*
