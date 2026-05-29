@@ -1628,8 +1628,14 @@
       }
       async function apiGet(path) {
         const response = await fetch(path, { headers: { Accept: "application/json" } });
-        const data = await response.json();
-        if (!response.ok || data.error) throw new Error(data.message || data.error || "API request failed");
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || "API request failed" }; }
+        if (!response.ok || data.error) {
+          const error = new Error(data.message || data.error || "API request failed");
+          error.status = response.status;
+          throw error;
+        }
         return data;
       }
       async function apiPost(path, payload) {
@@ -1638,8 +1644,14 @@
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(payload)
         });
-        const data = await response.json();
-        if (!response.ok || data.error) throw new Error(data.message || data.error || "API request failed");
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || "API request failed" }; }
+        if (!response.ok || data.error) {
+          const error = new Error(data.message || data.error || "API request failed");
+          error.status = response.status;
+          throw error;
+        }
         return data;
       }
       function mapProviderService(item) {
@@ -2228,8 +2240,9 @@
             if (result.user?.balance) state.balance = result.user.balance;
             localStorage.setItem("rectoboost_auth", "1");
             location.hash = "#/dashboard";
-          }).catch(() => {
-            if (email === "test@rectoboost.com" && password === "rectoboost" && location.protocol === "file:") {
+          }).catch((error) => {
+            const canUseDemoFallback = error.status === 404 || location.protocol === "file:";
+            if (email === "test@rectoboost.com" && password === "rectoboost" && canUseDemoFallback) {
               state.isAuthenticated = true;
               state.loginError = "";
               localStorage.setItem("rectoboost_auth", "1");
