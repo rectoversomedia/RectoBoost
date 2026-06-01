@@ -1,6 +1,5 @@
 import { json, apiError, getClientIp } from "../../../../lib/http.js";
 import { requireAuth } from "../../../../lib/auth.js";
-import { quoteOrder } from "../../../../lib/orders.js";
 import { createTransaction } from "../../../../lib/tripay.js";
 import { prisma } from "../../../../lib/db.js";
 import { paymentLimiter } from "../../../../lib/rateLimit.js";
@@ -10,16 +9,21 @@ export async function POST(request) {
     const { userId } = requireAuth(request);
 
     const ip = getClientIp(request);
-    const rl = paymentLimiter(`payment:${userId}:${ip}`);
+    const rl = paymentLimiter(`topup:${userId}:${ip}`);
     if (!rl.allowed) {
       return apiError(new Error(`Too many requests — try again in ${rl.retryAfter}s`), 429);
     }
 
     const body = await request.json();
-    const { serviceId, quantity, paymentMethod, link = "" } = body;
+    const { amount, bonusAmount = 0, paymentMethod } = body;
 
-    if (!serviceId || !quantity || !paymentMethod) {
-      return apiError(new Error("serviceId, quantity, dan paymentMethod wajib diisi"), 400);
+    if (!amount || !paymentMethod) {
+      return apiError(new Error("amount dan paymentMethod wajib diisi"), 400);
+    }
+
+    const totalAmount = Number(amount);
+    if (!Number.isInteger(totalAmount) || totalAmount < 10000) {
+      return apiError(new Error("Minimum top up adalah IDR 10.000"), 400);
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { wallet: true } });
@@ -27,21 +31,18 @@ export async function POST(request) {
       return apiError(new Error("User tidak ditemukan"), 404);
     }
 
-    const { pricing, service } = await quoteOrder({ serviceId, quantity });
-    const amount = pricing.customerPriceIdr;
-
-    const merchantRef = `RB-${Date.now()}-${userId.slice(-6)}`;
+    const merchantRef = `TOPUP-${Date.now()}-${userId.slice(-6)}`;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://boost.rectoversomedia.com";
 
     const tripayTx = await createTransaction({
-      method: paymentMethod,
+      method:        paymentMethod,
       merchantRef,
-      amount,
+      amount:        totalAmount,
       customerName:  user.fullName,
       customerEmail: user.email,
       customerPhone: user.phone || "",
-      orderItems: [{ name: `RectoBoost — ${service.name}`, price: amount, quantity: 1 }],
-      returnUrl:   `${appUrl}/#/orders`,
+      orderItems:    [{ name: `RectoBoost Top Up — IDR ${totalAmount.toLocaleString("id")}`, price: totalAmount, quantity: 1 }],
+      returnUrl:   `${appUrl}/#/add-funds/success`,
       callbackUrl: `${appUrl}/api/payment/webhook`,
     });
 
@@ -51,20 +52,20 @@ export async function POST(request) {
         provider:          "tripay",
         providerPaymentId: tripayTx.reference,
         status:            "PENDING",
-        amount,
+        amount:            totalAmount,
         fee:               tripayTx.total_fee || 0,
         currency:          "IDR",
         method:            paymentMethod,
         invoiceUrl:        tripayTx.checkout_url || null,
         expiredAt:         tripayTx.expired_time ? new Date(tripayTx.expired_time * 1000) : null,
-        metadata:          { merchantRef, serviceId, quantity, link },
+        metadata:          { type: "TOPUP", merchantRef, bonusAmount: Number(bonusAmount) },
       },
     });
 
     return json({
       paymentId:   payment.id,
       merchantRef,
-      amount,
+      amount:      totalAmount,
       currency:    "IDR",
       method:      paymentMethod,
       checkoutUrl: tripayTx.checkout_url || null,

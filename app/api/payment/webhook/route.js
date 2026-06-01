@@ -1,76 +1,105 @@
 import { json, apiError } from "../../../../lib/http.js";
-import { mapDuitkuStatus, verifyCallbackSignature } from "../../../../lib/duitku.js";
+import { verifyWebhookSignature, mapTripayStatus } from "../../../../lib/tripay.js";
 import { prisma } from "../../../../lib/db.js";
 import { createPaidOrder } from "../../../../lib/orders.js";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request) {
   try {
-    const contentType = request.headers.get("content-type") || "";
-    let payload;
+    const rawBody = await request.text();
+    const callbackSign = request.headers.get("x-callback-signature") || "";
+    const expectedSign = verifyWebhookSignature(rawBody);
 
-    if (contentType.includes("application/json")) {
-      payload = await request.json();
-    } else {
-      const formData = await request.formData();
-      payload = Object.fromEntries(formData.entries());
+    if (callbackSign !== expectedSign) {
+      console.warn("[webhook] Invalid Tripay signature — rejecting");
+      return apiError(new Error("Invalid signature"), 401);
     }
 
-    if ((process.env.PAYMENT_PROVIDER_MODE || "manual") === "duitku") {
-      if (!verifyCallbackSignature(payload)) {
-        return apiError(new Error("Invalid Duitku callback signature"), 401);
-      }
-      const status = mapDuitkuStatus(payload.resultCode);
-      const payment = await prisma.payment.findFirst({
-        where: {
-          OR: [
-            { id: String(payload.merchantOrderId || "") },
-            { providerPaymentId: String(payload.reference || "") },
-            { providerPaymentId: String(payload.merchantOrderId || "") }
-          ]
-        }
-      });
-      let order = null;
-      if (payment) {
-        const updatedPayment = await prisma.payment.update({
-          where: { id: payment.id },
-          data: {
-            status,
-            paidAt: status === "PAID" ? new Date() : payment.paidAt,
-            metadata: {
-              ...(payment.metadata || {}),
-              duitkuCallback: payload
-            }
-          }
-        });
+    const payload = JSON.parse(rawBody);
+    const { reference, status, paid_at } = payload;
 
-        const metadata = updatedPayment.metadata || {};
-        if (status === "PAID" && metadata.serviceId && metadata.link) {
-          order = await createPaidOrder({
-            serviceId: metadata.serviceId,
-            link: metadata.link,
-            quantity: metadata.quantity,
-            paymentId: updatedPayment.id
-          });
-        }
-      }
-
-      return json({
-        received: true,
-        provider: "duitku",
-        paymentId: payload.merchantOrderId || null,
-        reference: payload.reference || null,
-        status,
-        order,
-        resultCode: payload.resultCode,
-        amount: Number(payload.amount || payload.paymentAmount || 0)
-      });
+    if (!reference) {
+      return apiError(new Error("Missing reference"), 400);
     }
 
-    return json({
-      received: true,
-      paymentId: payload.paymentId || payload.id || null,
-      status: payload.status || "received"
+    const payment = await prisma.payment.findFirst({
+      where: { providerPaymentId: reference },
     });
+
+    if (!payment) {
+      console.warn("[webhook] Payment not found for reference:", reference);
+      return json({ received: true, message: "Ignored — payment not found" });
+    }
+
+    const newStatus = mapTripayStatus(status);
+
+    // Idempotency guard — kalau sudah PAID sebelumnya, jangan proses ulang
+    if (payment.paidAt && newStatus === "PAID") {
+      console.log("[webhook] Already processed — skipping:", reference);
+      return json({ success: true, status: newStatus, idempotent: true });
+    }
+
+    const updatedPayment = await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: newStatus,
+        paidAt: newStatus === "PAID" && paid_at ? new Date(paid_at * 1000) : undefined,
+        metadata: { ...(payment.metadata || {}), tripayCallback: payload },
+      },
+    });
+
+    if (newStatus !== "PAID" || !updatedPayment.metadata) {
+      return json({ success: true, status: newStatus });
+    }
+
+    const meta = updatedPayment.metadata;
+
+    // TOPUP — tambah saldo wallet
+    if (meta.type === "TOPUP") {
+      try {
+        const topupCredit = Number(payment.amount) + Number(meta.bonusAmount || 0);
+        await prisma.$transaction([
+          prisma.wallet.upsert({
+            where:  { userId: payment.userId },
+            update: { balance: { increment: topupCredit } },
+            create: { userId: payment.userId, balance: topupCredit, currency: "IDR" },
+          }),
+          prisma.walletTransaction.create({
+            data: {
+              userId:      payment.userId,
+              type:        "TOPUP",
+              status:      "SUCCESS",
+              amount:      topupCredit,
+              currency:    "IDR",
+              reference:   payment.providerPaymentId,
+              note:        `Top up via ${payment.method} — Ref: ${meta.merchantRef}`,
+            },
+          }),
+        ]);
+        console.log(`[webhook] Wallet topped up: user=${payment.userId} amount=${topupCredit}`);
+      } catch (err) {
+        console.error("[webhook] Wallet topup failed:", err.message);
+      }
+      return json({ success: true, status: newStatus });
+    }
+
+    // ORDER — kirim ke SMMWIZ
+    let order = null;
+    if (meta.serviceId && meta.quantity) {
+      try {
+        order = await createPaidOrder({
+          serviceId: meta.serviceId,
+          link:      meta.link || "",
+          quantity:  meta.quantity,
+          paymentId: updatedPayment.id,
+        });
+      } catch (orderErr) {
+        console.error("[webhook] Order submission failed:", orderErr.message);
+      }
+    }
+
+    return json({ success: true, status: newStatus, order });
   } catch (error) {
     return apiError(error, 400);
   }

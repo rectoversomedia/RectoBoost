@@ -7,21 +7,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "server": "node server.js",
     "postinstall": "prisma generate",
-    "preview-static": "node server.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "services:sync": "node scripts/sync-services.js",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
     "next": "^15.5.18",
+    "nodemailer": "^8.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "playwright": "^1.60.0",
     "prisma": "^6.8.2"
   },
   "engines": {
