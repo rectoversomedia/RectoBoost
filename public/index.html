@@ -1642,9 +1642,9 @@
       /* ── New order filter bar ───────────────────────────────── */
       .new-order-filters {
         display: grid;
-        grid-template-columns: 220px 1fr;
-        gap: 10px;
-        margin-bottom: 14px;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
       }
       @media (max-width: 600px) { .new-order-filters { grid-template-columns: 1fr; } }
 
@@ -2229,6 +2229,8 @@
         priceFilter: "all",
         refillFilter: false,
         newOrderSearch: "",
+        newOrderSubCat: "",
+        newOrderPage: 1,
       };
       // Translation helper
       function t(key) {
@@ -2582,12 +2584,28 @@
           .filter(({ s }) => isIndonesiaOrNoCountry(s));
       }
 
+      function getServiceSubCat(s) {
+        const n = (s[1] || "").toLowerCase();
+        if (n.includes("follower") || n.includes("subscriber")) return "Followers / Subscribers";
+        if (n.includes("like")) return "Likes";
+        if (n.includes("view") || n.includes("play") || n.includes("stream")) return "Views & Plays";
+        if (n.includes("comment")) return "Comments";
+        if (n.includes("member") || n.includes("join")) return "Members";
+        if (n.includes("share") || n.includes("retweet") || n.includes("repost")) return "Shares";
+        if (n.includes("watch")) return "Watch Time";
+        if (n.includes("impression")) return "Impressions";
+        if (n.includes("visit") || n.includes("traffic")) return "Traffic & Visits";
+        return "Other";
+      }
+
       function newOrderServices() {
         const cat = state.selectedCategory;
         const search = (state.newOrderSearch || "").trim().toLowerCase();
+        const subCat = state.newOrderSubCat || "";
         return services
           .map((s, i) => ({ s, i }))
           .filter(({ s }) => cat === "all" || s[0] === cat)
+          .filter(({ s }) => !subCat || getServiceSubCat(s) === subCat)
           .filter(({ s }) => !search || `${s[0]} ${s[1]} ${s[2]}`.toLowerCase().includes(search))
           .filter(({ s }) => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
           .filter(({ s }) => isIndonesiaOrNoCountry(s));
@@ -3030,25 +3048,58 @@
       }
 
       function newOrder() {
-        const visibleServices = newOrderServices();
+        const PAGE_SIZE = 15;
         const catOptions = allCategories.filter(c => c !== "all");
-        const svcCount = visibleServices.length;
+        // Get sub-categories available for selected platform
+        const platformSvcs = services
+          .filter(s => (state.selectedCategory === "all" || s[0] === state.selectedCategory)
+            && !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w))
+            && isIndonesiaOrNoCountry(s));
+        const subCats = [...new Set(platformSvcs.map(s => getServiceSubCat(s)))].sort();
+
+        const allFiltered = newOrderServices();
+        const page = state.newOrderPage || 1;
+        const visibleServices = allFiltered.slice(0, page * PAGE_SIZE);
+        const hasMore = allFiltered.length > visibleServices.length;
+
         return layout(`<section class="view shell">${pageHead("New Order")}<div class="grid">${stepper(1)}<div class="two-col"><div class="grid"><article class="card section">
-          <h2>1. Pilih Kategori</h2>
-          <p class="muted" style="margin-bottom:12px">Pilih platform media sosial yang ingin kamu tingkatkan.</p>
+          <h2>1. Pilih Layanan</h2>
+          <p class="muted" style="margin-bottom:14px">Pilih platform dan jenis layanan yang kamu butuhkan.</p>
+
           <div class="new-order-filters">
-            <select class="select" data-new-order-category style="min-height:44px;padding:0 14px">
-              <option value="all">Semua Kategori</option>
-              ${catOptions.map(c => `<option value="${c}" ${state.selectedCategory === c ? "selected" : ""}>${categoryLabel(c)}</option>`).join("")}
-            </select>
-            <div class="field" style="display:flex;align-items:center;gap:10px;flex:1">
-              ${svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>')}
-              <input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;width:100%" placeholder="Cari layanan..." value="${attr(state.newOrderSearch || "")}" data-new-order-search />
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">Platform</label>
+              <select class="select" data-new-order-category style="width:100%;min-height:42px;padding:0 12px">
+                <option value="all">Semua Platform</option>
+                ${catOptions.map(c => `<option value="${c}" ${state.selectedCategory === c ? "selected" : ""}>${categoryLabel(c)}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">Jenis Layanan</label>
+              <select class="select" data-new-order-subcat style="width:100%;min-height:42px;padding:0 12px">
+                <option value="">Semua Jenis</option>
+                ${subCats.map(c => `<option value="${c}" ${state.newOrderSubCat === c ? "selected" : ""}>${c}</option>`).join("")}
+              </select>
             </div>
           </div>
-          <p class="muted" style="font-size:13px;margin:12px 0 8px">${svcCount} layanan tersedia</p>
-          <div class="service-list">${svcCount ? visibleServices.map(({ s, i }) => serviceRow(s, i, String(s[8]) === String(state.selectedServiceId))).join("") : `<div class="empty-state" style="padding:32px;text-align:center"><p>Tidak ada layanan ditemukan untuk kategori ini.</p></div>`}</div>
-        </article><div class="card announcement request-strip"><div class="announce-title">${svg(icon.info)}Tidak menemukan layanan yang sesuai?</div><p>Kirim permintaan dan kami akan menambahkannya untuk kamu.</p><a class="btn small ghost" href="#/tickets/create">Request Layanan</a></div></div><div class="grid">${orderSummary(true)}${tips()}</div></div></div></section>`);
+
+          <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            ${svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>')}
+            <input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;width:100%" placeholder="Cari nama layanan..." value="${attr(state.newOrderSearch || "")}" data-new-order-search />
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span class="muted" style="font-size:13px"><strong style="color:var(--text)">${allFiltered.length.toLocaleString("id-ID")}</strong> layanan tersedia</span>
+            ${state.newOrderSubCat || state.newOrderSearch ? `<button class="btn small ghost" data-reset-new-order-filters>Reset Filter</button>` : ""}
+          </div>
+
+          <div class="service-list">
+            ${visibleServices.length
+              ? visibleServices.map(({ s, i }) => serviceRow(s, i, String(s[8]) === String(state.selectedServiceId))).join("")
+              : `<div class="empty-state" style="padding:32px;text-align:center"><p>Tidak ada layanan ditemukan. Coba ubah filter atau kategori.</p></div>`}
+          </div>
+          ${hasMore ? `<div style="text-align:center;margin-top:14px"><button class="btn ghost" data-load-more-services>Tampilkan Lebih Banyak (${allFiltered.length - visibleServices.length} tersisa)</button></div>` : ""}
+        </article></div><div class="grid">${orderSummary(!state.selectedServiceId)}${tips()}</div></div></div></section>`);
       }
 
       function serviceRow(s, index, selected = false) {
@@ -4818,6 +4869,22 @@
           return;
         }
 
+        if (event.target.closest("[data-reset-new-order-filters]")) {
+          event.preventDefault();
+          state.newOrderSubCat = "";
+          state.newOrderSearch = "";
+          state.newOrderPage = 1;
+          render();
+          return;
+        }
+
+        if (event.target.closest("[data-load-more-services]")) {
+          event.preventDefault();
+          state.newOrderPage = (state.newOrderPage || 1) + 1;
+          render();
+          return;
+        }
+
         const packageButton = event.target.closest("[data-package]");
         if (packageButton) {
           event.preventDefault();
@@ -4850,6 +4917,7 @@
 
         if (event.target.matches("[data-new-order-search]")) {
           state.newOrderSearch = event.target.value;
+          state.newOrderPage = 1;
           render();
           const input = document.querySelector("[data-new-order-search]");
           if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
@@ -4874,7 +4942,15 @@
       document.addEventListener("change", (event) => {
         if (event.target.matches("[data-new-order-category]")) {
           state.selectedCategory = event.target.value;
+          state.newOrderSubCat = "";
           state.newOrderSearch = "";
+          state.newOrderPage = 1;
+          render();
+          return;
+        }
+        if (event.target.matches("[data-new-order-subcat]")) {
+          state.newOrderSubCat = event.target.value;
+          state.newOrderPage = 1;
           render();
           return;
         }
