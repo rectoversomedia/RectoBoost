@@ -1879,7 +1879,7 @@
       /* Goal filter grid */
       .goal-grid {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(7, 1fr);
         gap: 10px;
         margin-bottom: 20px;
       }
@@ -1887,21 +1887,31 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
-        padding: 14px 8px;
-        border: 1px solid rgba(109,160,255,.2);
-        border-radius: 12px;
-        background: rgba(255,255,255,.05);
+        gap: 8px;
+        padding: 18px 8px 14px;
+        border: 1.5px solid rgba(23,55,105,.1);
+        border-radius: 14px;
+        background: #ffffff;
         cursor: pointer;
         text-align: center;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 700;
-        color: var(--soft);
-        transition: border-color .14s, background .14s, color .14s;
+        color: #111827;
+        transition: border-color .16s, box-shadow .16s, transform .12s;
+        box-shadow: 0 1px 4px rgba(0,0,0,.04);
       }
-      .goal-card:hover { border-color: rgba(8,119,255,.45); background: rgba(8,119,255,.08); color: var(--text); }
-      .goal-card.active { border-color: var(--blue) !important; color: #fff; background: rgba(8,119,255,.18); }
-      .goal-card-icon { font-size: 22px; line-height: 1; }
+      .goal-card:hover { border-color: var(--blue); box-shadow: 0 4px 14px rgba(8,119,255,.12); transform: translateY(-2px); }
+      .goal-card.active { border-color: var(--blue); box-shadow: 0 4px 18px rgba(8,119,255,.2); transform: translateY(-2px); }
+      .goal-card-icon-wrap {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+      }
+      .goal-card-icon-wrap svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .goal-card-label { font-size: 11px; font-weight: 700; color: #111827; line-height: 1.2; }
+      .goal-card-sub { font-size: 9.5px; font-weight: 500; color: #7b8798; line-height: 1.2; }
 
       /* Featured service cards */
       .featured-grid {
@@ -1982,24 +1992,25 @@
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
-        border: 1px solid rgba(109,160,255,.18);
-        border-radius: 10px;
-        background: rgba(255,255,255,.04);
+        border: 1.5px solid rgba(23,55,105,.1);
+        border-radius: 12px;
+        background: #ffffff;
         text-decoration: none;
-        color: inherit;
-        transition: border-color .15s, background .15s;
+        color: #111827;
+        transition: border-color .15s, box-shadow .15s, transform .12s;
         cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
       }
-      .platform-shortcut:hover { border-color: rgba(8,119,255,.42); background: rgba(8,119,255,.07); }
+      .platform-shortcut:hover { border-color: var(--blue); box-shadow: 0 4px 14px rgba(8,119,255,.1); transform: translateY(-2px); }
 
       /* Light mode overrides */
-      body.light-mode .platform-shortcut { background: #f5f8ff; border-color: rgba(23,55,105,.12); }
-      body.light-mode .platform-shortcut:hover { background: #edf5ff; border-color: rgba(8,119,255,.3); }
+      body.light-mode .platform-shortcut { background: #ffffff; border-color: rgba(23,55,105,.1); }
+      body.light-mode .platform-shortcut:hover { background: #f8fbff; border-color: var(--blue); }
       body.light-mode .pkg-card { background: #fff; border-color: rgba(23,55,105,.15); }
       body.light-mode .pkg-card:hover { background: #f0f7ff; border-color: rgba(8,119,255,.4); }
-      body.light-mode .goal-card { background: #f5f8ff; border-color: rgba(23,55,105,.14); color: #526174; }
-      body.light-mode .goal-card:hover { background: #edf5ff; border-color: rgba(8,119,255,.4); color: #0f172a; }
-      body.light-mode .goal-card.active { background: #e0edff; border-color: var(--blue); color: var(--blue); }
+      body.light-mode .goal-card { background: #ffffff; border-color: rgba(23,55,105,.1); color: #111827; }
+      body.light-mode .goal-card:hover { background: #f8fbff; border-color: var(--blue); }
+      body.light-mode .goal-card.active { background: #edf6ff; border-color: var(--blue); }
       body.light-mode .featured-card { background: #fff; border-color: rgba(23,55,105,.13); }
       body.light-mode .featured-card:hover { background: #f7fbff; border-color: rgba(8,119,255,.32); }
       body.light-mode .filter-chip { background: #fff; border-color: rgba(23,55,105,.14); color: #526174; }
@@ -2385,13 +2396,13 @@
       ];
 
       const GOAL_OPTIONS = [
-        { key: "all",          icon: "✨", label: "All Goals" },
-        { key: "social-proof", icon: "📣", label: "Social Proof" },
-        { key: "visibility",   icon: "👁️",  label: "Visibility" },
-        { key: "launch",       icon: "🚀", label: "Launch Campaign" },
-        { key: "community",    icon: "👥", label: "Community" },
-        { key: "music",        icon: "🎵", label: "Music Promotion" },
-        { key: "video",        icon: "▶️",  label: "Video Engagement" },
+        { key: "all",          color: "#6366F1", sub: "Semua kategori", label: "All Goals",        svg: '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>' },
+        { key: "social-proof", color: "#E1306C", sub: "Follower & Likes", label: "Social Proof",  svg: '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>' },
+        { key: "visibility",   color: "#0877ff", sub: "Views & Reach",    label: "Visibility",    svg: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>' },
+        { key: "launch",       color: "#FF7A1A", sub: "Kampanye Baru",    label: "Launch Boost",  svg: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>' },
+        { key: "community",    color: "#229ED9", sub: "Member & Group",   label: "Community",     svg: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+        { key: "music",        color: "#1DB954", sub: "Plays & Streams",  label: "Music Promo",   svg: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>' },
+        { key: "video",        color: "#FF0000", sub: "Views & Watchtime", label: "Video",        svg: '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>' },
       ];
 
       function menu() {
@@ -2932,58 +2943,38 @@
               </div>
             </article>
 
-            <!-- ── Platform Categories ──────────────────────────── -->
+            <!-- ── Service Categories ───────────────────────────── -->
             <article class="card section" style="margin-top:16px">
-              <div class="discover-head">
-                <div>
-                  <h2 style="margin-bottom:4px">${state.lang==="id"?"Kategori Layanan":"Service Categories"}</h2>
-                  <p class="muted" style="margin:0;font-size:13px">${state.lang==="id"?"Temukan layanan berdasarkan tujuan kampanye kamu.":"Find services aligned with your campaign goal."}</p>
-                </div>
+              <div style="text-align:center;margin-bottom:20px">
+                <h2 style="margin:0 0 6px;font-size:18px">${state.lang==="id"?"Kategori Layanan":"Service Categories"}</h2>
+                <p class="muted" style="margin:0;font-size:13px">${state.lang==="id"?"Pilih tujuan kampanye kamu dan temukan layanan terbaik.":"Choose your campaign goal and find the best service."}</p>
               </div>
               <div class="goal-grid">
                 ${GOAL_OPTIONS.map(g => `
                   <button class="goal-card" data-dash-goal="${g.key}">
-                    <span class="goal-card-icon">${g.icon}</span>
-                    <span>${g.label}</span>
+                    <div class="goal-card-icon-wrap" style="background:${g.color}18;color:${g.color}">
+                      <svg viewBox="0 0 24 24">${g.svg}</svg>
+                    </div>
+                    <span class="goal-card-label">${g.label}</span>
+                    <span class="goal-card-sub">${g.sub}</span>
                   </button>`).join("")}
               </div>
-              <div class="three-col" style="margin-top:12px">
+              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:4px">
                 ${[
-                  {p:"instagram",label:"Instagram",desc:"Social Proof"},
-                  {p:"tiktok",label:"TikTok",desc:"Creator Growth"},
-                  {p:"youtube",label:"YouTube",desc:"Video Visibility"},
-                  {p:"spotify",label:"Spotify",desc:"Music Promotion"},
-                  {p:"telegram",label:"Telegram",desc:"Community Growth"},
-                  {p:"twitter",label:"Twitter/X",desc:"Social Distribution"},
-                ].map(({p,label,desc}) => `
-                  <a class="platform-shortcut" href="#/services" data-service-platform="${p}">
+                  {p:"instagram",label:"Instagram",color:"#E1306C"},
+                  {p:"tiktok",label:"TikTok",color:"#000"},
+                  {p:"youtube",label:"YouTube",color:"#FF0000"},
+                  {p:"spotify",label:"Spotify",color:"#1DB954"},
+                  {p:"telegram",label:"Telegram",color:"#229ED9"},
+                  {p:"twitter",label:"Twitter/X",color:"#1DA1F2"},
+                ].map(({p,label,color}) => `
+                  <a class="platform-shortcut" href="#/services" data-service-platform="${p}" style="flex-direction:column;align-items:center;text-align:center;padding:14px 8px;gap:8px">
                     ${brand(p)}
-                    <div>
-                      <strong style="display:block;font-size:13px">${label}</strong>
-                      <span style="font-size:11px;color:var(--muted)">${desc}</span>
-                    </div>
+                    <strong style="display:block;font-size:12px">${label}</strong>
                   </a>`).join("")}
               </div>
             </article>
 
-            ${(() => {
-              const svcs = state.allServices || [];
-              const total = svcs.length || services.length;
-              const today = new Date().toLocaleDateString(state.lang==="id"?"id-ID":"en-US",{day:"numeric",month:"long",year:"numeric"});
-              const msg = total > 0
-                ? (state.lang==="id"
-                    ? `${total.toLocaleString("id-ID")} layanan tersedia — mulai dari Instagram, TikTok, YouTube, Spotify, dan banyak lagi.`
-                    : `${total.toLocaleString("id-ID")} services available — Instagram, TikTok, YouTube, Spotify, and more.`)
-                : (state.lang==="id"
-                    ? "Layanan baru tersedia setiap hari. Klik Explore Services untuk melihat katalog lengkap."
-                    : "New services added daily. Click Explore Services to browse the full catalog.");
-              return `<div class="card announcement">
-                <div class="announce-title">${svg('<path d="m3 11 18-5v12L3 13z"/><path d="M7 14v5"/>')}${state.lang==="id"?"Pengumuman":"Announcements"}</div>
-                <span class="new-pill">Live</span>
-                <p>${msg}</p>
-                <span class="muted">${today}</span>
-              </div>`;
-            })()}
           </section>`, "dashboard-mode");
       }
 
@@ -3350,10 +3341,12 @@
           const goalGrid = `
             <div class="goal-grid">
               ${GOAL_OPTIONS.map(g => `
-                <button class="goal-card ${state.goalFilter===g.key?"active":""}" data-goal-filter="${g.key}"
-                  style="border:1px solid ${state.goalFilter===g.key?"var(--blue)":"var(--line)"}">
-                  <span class="goal-card-icon">${g.icon}</span>
-                  <span>${g.label}</span>
+                <button class="goal-card ${state.goalFilter===g.key?"active":""}" data-goal-filter="${g.key}">
+                  <div class="goal-card-icon-wrap" style="background:${g.color}18;color:${g.color}">
+                    <svg viewBox="0 0 24 24">${g.svg}</svg>
+                  </div>
+                  <span class="goal-card-label">${g.label}</span>
+                  <span class="goal-card-sub">${g.sub}</span>
                 </button>`).join("")}
             </div>`;
 
@@ -3558,12 +3551,14 @@
         );
 
         const goalGrid = `
-          <div class="goal-grid" style="grid-template-columns:repeat(7,1fr)">
+          <div class="goal-grid">
             ${GOAL_OPTIONS.map(g => `
-              <button class="goal-card ${state.goalFilter===g.key?"active":""}" data-goal-filter="${g.key}"
-                style="border:1px solid ${state.goalFilter===g.key?"var(--blue)":"var(--line)"}">
-                <span class="goal-card-icon">${g.icon}</span>
-                <span>${g.label}</span>
+              <button class="goal-card ${state.goalFilter===g.key?"active":""}" data-goal-filter="${g.key}">
+                <div class="goal-card-icon-wrap" style="background:${g.color}18;color:${g.color}">
+                  <svg viewBox="0 0 24 24">${g.svg}</svg>
+                </div>
+                <span class="goal-card-label">${g.label}</span>
+                <span class="goal-card-sub">${g.sub}</span>
               </button>`).join("")}
           </div>`;
 
