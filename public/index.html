@@ -1802,30 +1802,32 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 6px 13px;
+        padding: 7px 14px;
         font-size: 12px;
-        font-weight: 700;
-        color: var(--soft);
-        border: 1px solid var(--line-strong);
+        font-weight: 600;
+        color: #273449;
+        border: 1.5px solid rgba(23,55,105,.14);
         border-radius: 999px;
-        background: rgba(20,36,60,.5);
+        background: #ffffff;
         cursor: pointer;
-        transition: .14s;
+        transition: border-color .14s, box-shadow .14s;
         white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
       }
-      .filter-chip.active { color: var(--blue-2); border-color: rgba(8,119,255,.58); background: rgba(8,119,255,.1); }
+      .filter-chip:hover { border-color: rgba(8,119,255,.4); }
+      .filter-chip.active { color: var(--blue); border-color: var(--blue); background: #edf6ff; }
       .filter-chip select {
         background: transparent;
         border: 0;
         color: inherit;
         font: inherit;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
         outline: none;
         padding: 0;
         max-width: 130px;
       }
-      .filter-chip select option { background: #07111f; color: #f7faff; }
+      .filter-chip select option { background: #fff; color: #111827; }
 
       /* Package cards */
       .pkg-grid {
@@ -2013,8 +2015,8 @@
       body.light-mode .goal-card.active { background: #edf6ff; border-color: var(--blue); }
       body.light-mode .featured-card { background: #fff; border-color: rgba(23,55,105,.13); }
       body.light-mode .featured-card:hover { background: #f7fbff; border-color: rgba(8,119,255,.32); }
-      body.light-mode .filter-chip { background: #fff; border-color: rgba(23,55,105,.14); color: #526174; }
-      body.light-mode .filter-chip.active { color: var(--blue); border-color: rgba(8,119,255,.34); background: rgba(8,119,255,.06); }
+      body.light-mode .filter-chip { background: #fff; border-color: rgba(23,55,105,.14); color: #273449; }
+      body.light-mode .filter-chip.active { color: var(--blue); border-color: var(--blue); background: #edf6ff; }
       body.light-mode .view-toggle { border-color: rgba(23,55,105,.18); }
       body.light-mode .view-toggle-btn { color: #526174; }
       body.light-mode .filter-chip select option { background: #fff; color: #111827; }
@@ -2231,6 +2233,7 @@
         newOrderSearch: "",
         newOrderSubCat: "",
         newOrderPage: 1,
+        serviceSubCat: "",
       };
       // Translation helper
       function t(key) {
@@ -2977,20 +2980,42 @@
                     <span class="goal-card-sub">${g.sub}</span>
                   </button>`).join("")}
               </div>
-              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:4px">
-                ${[
-                  {p:"instagram",label:"Instagram",color:"#E1306C"},
-                  {p:"tiktok",label:"TikTok",color:"#000"},
-                  {p:"youtube",label:"YouTube",color:"#FF0000"},
-                  {p:"spotify",label:"Spotify",color:"#1DB954"},
-                  {p:"telegram",label:"Telegram",color:"#229ED9"},
-                  {p:"twitter",label:"Twitter/X",color:"#1DA1F2"},
-                ].map(({p,label,color}) => `
-                  <a class="platform-shortcut" href="#/services" data-service-platform="${p}" style="flex-direction:column;align-items:center;text-align:center;padding:14px 8px;gap:8px">
-                    ${brand(p)}
-                    <strong style="display:block;font-size:12px">${label}</strong>
-                  </a>`).join("")}
-              </div>
+              <!-- ── Top 10 Popular Services ─── -->
+              ${(() => {
+                const top10 = services
+                  .map((s, i) => ({ s, i }))
+                  .filter(({ s }) => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
+                  .filter(({ s }) => isIndonesiaOrNoCountry(s))
+                  .sort((a, b) => {
+                    const aRef = (a.s[5] === "Refill" || (a.s[5]||"").includes("Days")) ? 0 : 1;
+                    const bRef = (b.s[5] === "Refill" || (b.s[5]||"").includes("Days")) ? 0 : 1;
+                    if (aRef !== bRef) return aRef - bRef;
+                    return a.s[6] - b.s[6];
+                  })
+                  .slice(0, 10);
+                if (!top10.length) return "";
+                const id = state.lang === "id";
+                return `
+                <div style="margin-top:16px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <strong style="font-size:14px">${id?"10 Layanan Terpopuler":"Top 10 Popular Services"}</strong>
+                    <a class="btn small ghost" href="#/services">${id?"Lihat Semua":"View All"} &rsaquo;</a>
+                  </div>
+                  <div style="display:grid;gap:6px">
+                    ${top10.map(({ s, i }, rank) => `
+                      <div style="display:grid;grid-template-columns:22px 32px 1fr auto auto;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#f8fbff;border:1px solid rgba(23,55,105,.08)">
+                        <span style="font-size:11px;font-weight:700;color:var(--muted);text-align:center">${rank+1}</span>
+                        ${brand(s[0], "platform")}
+                        <div style="min-width:0">
+                          <strong style="display:block;font-size:12px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cleanServiceName(s[1], s[0])}</strong>
+                          <span style="font-size:10.5px;color:var(--muted)">${categoryLabel(s[0])}</span>
+                        </div>
+                        <span style="font-size:12px;font-weight:700;color:var(--blue-2);white-space:nowrap">IDR ${(s[6]*1000).toLocaleString("id-ID")}/1K</span>
+                        <button class="btn small primary" data-service-index="${i}" style="font-size:11px;white-space:nowrap">${id?"Order":"Order"}</button>
+                      </div>`).join("")}
+                  </div>
+                </div>`;
+              })()}
             </article>
 
           </section>`, "dashboard-mode");
@@ -3404,7 +3429,7 @@
           const filterRow = `
             <div class="filter-row">
               <label class="filter-chip ${state.speedFilter!=="all"?"active":""}">
-                ⚡ ${id?"Kecepatan":"Speed"}:&nbsp;
+                ${id?"Kecepatan":"Speed"}:&nbsp;
                 <select data-speed-filter>
                   <option value="all" ${state.speedFilter==="all"?"selected":""}>${id?"Semua":"All"}</option>
                   <option value="fast" ${state.speedFilter==="fast"?"selected":""}>Fast</option>
@@ -3412,20 +3437,20 @@
                 </select>
               </label>
               <label class="filter-chip ${state.priceFilter!=="all"?"active":""}">
-                💰 ${id?"Harga":"Price"}:&nbsp;
+                ${id?"Harga":"Price"}:&nbsp;
                 <select data-price-filter>
                   <option value="all" ${state.priceFilter==="all"?"selected":""}>${id?"Semua":"All"}</option>
-                  <option value="low" ${state.priceFilter==="low"?"selected":""}>${id?"Murah (< IDR 15K/1K)":"Budget (< IDR 15K/1K)"}</option>
-                  <option value="mid" ${state.priceFilter==="mid"?"selected":""}>${id?"Sedang (IDR 15K–60K/1K)":"Mid (IDR 15K–60K/1K)"}</option>
-                  <option value="high" ${state.priceFilter==="high"?"selected":""}>${id?"Premium (> IDR 60K/1K)":"Premium (> IDR 60K/1K)"}</option>
+                  <option value="low" ${state.priceFilter==="low"?"selected":""}>${id?"Budget":"Budget"} &lt;15K</option>
+                  <option value="mid" ${state.priceFilter==="mid"?"selected":""}>Mid 15–60K</option>
+                  <option value="high" ${state.priceFilter==="high"?"selected":""}>Premium &gt;60K</option>
                 </select>
               </label>
               <label class="filter-chip ${state.refillFilter?"active":""}">
                 <input type="checkbox" ${state.refillFilter?"checked":""} data-refill-filter style="display:none">
-                🔄 ${id?"Tersedia Refill":"Refill Available"}${state.refillFilter?" ✓":""}
+                Refill${state.refillFilter?" ✓":""}
               </label>
               <label class="filter-chip" style="flex:1;max-width:320px">
-                🔍&nbsp;<input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:700;width:100%;min-width:60px" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
+                <input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:600;width:100%;min-width:60px" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
               </label>
             </div>`;
 
@@ -3498,48 +3523,23 @@
             </section>`);
         }
 
-        // ── All Services mode (full table) ──────────────────────────
-        const rows = filteredServices();
+        // ── All Services mode — SMMWIZ-style category + service list ─
+        const allSvcCats = allCategories.filter(x => x !== "all");
+        const cat = state.serviceCategory || "all";
+        const subCatAll = [...new Set(
+          services
+            .filter(s => cat === "all" || s[0] === cat)
+            .filter(s => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
+            .filter(s => isIndonesiaOrNoCountry(s))
+            .map(s => getServiceSubCat(s))
+        )].sort();
+        const subCatSel = state.serviceSubCat || "";
+        const rows = filteredServices().filter(({s}) => !subCatSel || getServiceSubCat(s) === subCatSel);
         const total = rows.length;
         const page = state.servicesPage || 1;
-        const perPage = state.servicesPerPage || 20;
+        const perPage = 20;
         const totalPages = Math.max(1, Math.ceil(total / perPage));
-        const start = (page - 1) * perPage;
-        const shown = rows.slice(start, start + perPage);
-        const startNum = total === 0 ? 0 : start + 1;
-        const endNum = Math.min(start + perPage, total);
-
-        const platformOptions = [
-          `<option value="all">${t("allCategories")}</option>`,
-          ...allCategories.filter(x => x !== "all").map(x =>
-            `<option value="${x}" ${state.serviceCategory === x ? "selected" : ""}>${categoryLabel(x)}</option>`)
-        ].join("");
-
-        const tableRows = shown.length
-          ? shown.map(({ s, i }) => `
-            <tr>
-              <td style="color:var(--blue-2);text-align:center;width:60px">${s[8] || (start+shown.indexOf(shown.find(x=>x.i===i))+1)}</td>
-              <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                  ${brand(s[0], "service-icon platform")}
-                  <div>
-                    <strong style="display:block;line-height:1.3">${cleanServiceName(s[1], s[0])}</strong>
-                    <span class="muted" style="font-size:12px">${friendlyCategory(s[0])}</span>
-                  </div>
-                </div>
-              </td>
-              <td style="text-align:center"><span class="tag">${categoryLabel(s[0])}</span></td>
-              <td style="text-align:center"><span class="tag">${s[5] === "No Refill" ? "Standard" : "Refill"}</span></td>
-              <td style="text-align:center;white-space:nowrap">⚡ ${s[4]}</td>
-              <td style="text-align:center;white-space:nowrap">${s[7]}</td>
-              <td style="text-align:right;color:var(--blue);font-weight:800;white-space:nowrap">IDR ${(s[6]*1000).toLocaleString("id-ID")}</td>
-              <td style="text-align:center">
-                <button class="btn small ghost" data-service-index="${i}" style="white-space:nowrap">
-                  ${id?"Buat Order":"Create Order"} ${svg(icon.order)}
-                </button>
-              </td>
-            </tr>`).join("")
-          : `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted)">${id?"Tidak ada layanan ditemukan.":"No services found."}</td></tr>`;
+        const shown = rows.slice((page-1)*perPage, page*perPage);
 
         return layout(`
           <section class="view shell services-page">
@@ -3548,45 +3548,44 @@
                 <h1>${id?"Layanan":"Services"}</h1>
                 <div class="crumb">Dashboard <span>&rsaquo;</span> ${id?"Layanan":"Services"}</div>
               </div>
-              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                <div class="view-toggle">
-                  <button class="view-toggle-btn" data-svc-mode="recommended">
-                    ✨ ${id?"Direkomendasikan":"Recommended"}
-                  </button>
-                  <button class="view-toggle-btn active" data-svc-mode="all">
-                    📋 ${id?"Semua Layanan":"All Services"}
-                  </button>
+              <div class="view-toggle">
+                <button class="view-toggle-btn" data-svc-mode="recommended">✨ ${id?"Rekomendasi":"Recommended"}</button>
+                <button class="view-toggle-btn active" data-svc-mode="all">📋 ${id?"Semua":"All Services"}</button>
+              </div>
+            </div>
+            <article class="card section">
+              <h2 style="margin:0 0 14px">${id?"Pilih Layanan":"Browse Services"}</h2>
+              <div class="new-order-filters" style="margin-bottom:12px">
+                <div>
+                  <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">Platform</label>
+                  <select class="select" data-service-category style="width:100%;min-height:42px;padding:0 12px">
+                    <option value="all">${id?"Semua Platform":"All Platforms"}</option>
+                    ${allSvcCats.map(x => `<option value="${x}" ${cat===x?"selected":""}>${categoryLabel(x)}</option>`).join("")}
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">${id?"Jenis Layanan":"Service Type"}</label>
+                  <select class="select" data-service-subcat style="width:100%;min-height:42px;padding:0 12px">
+                    <option value="">${id?"Semua Jenis":"All Types"}</option>
+                    ${subCatAll.map(c => `<option value="${c}" ${subCatSel===c?"selected":""}>${c}</option>`).join("")}
+                  </select>
                 </div>
               </div>
-            </div>
-            <div class="card section" style="margin-bottom:12px;padding:14px 18px">
-              <p class="muted" style="margin:0;font-size:12px">${svg(icon.info)} ${id
-                ? `Mode <strong>All Services</strong> menampilkan ${total.toLocaleString("id-ID")} layanan lengkap dari provider. Cocok untuk reseller dan advanced user.`
-                : `<strong>All Services</strong> mode shows ${total.toLocaleString("id-ID")} complete services from the provider. Suitable for resellers and advanced users.`
-              }</p>
-            </div>
-            <article class="card table-card">
-              <div class="table-tools">
-                <input class="field" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
-                <select class="select" data-service-category>${platformOptions}</select>
+              <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                ${svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>')}
+                <input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;width:100%" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
               </div>
-              <table style="min-width:700px">
-                <thead>
-                  <tr>
-                    <th style="text-align:center;width:60px">ID</th>
-                    <th>${t("service")}</th>
-                    <th style="text-align:center">${id?"Platform":"Platform"}</th>
-                    <th style="text-align:center">Type</th>
-                    <th style="text-align:center">Speed</th>
-                    <th style="text-align:center">${t("minOrder")} - ${t("maxOrder")}</th>
-                    <th style="text-align:right">${t("pricePerK")}</th>
-                    <th style="text-align:center">Action</th>
-                  </tr>
-                </thead>
-                <tbody>${tableRows}</tbody>
-              </table>
-              <div class="table-foot">
-                <span style="white-space:nowrap">${id?"Menampilkan":"Showing"} ${startNum}–${endNum} ${id?"dari":"of"} ${total.toLocaleString("id-ID")} ${id?"layanan":"services"}</span>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span class="muted" style="font-size:13px"><strong style="color:var(--text)">${total.toLocaleString("id-ID")}</strong> layanan</span>
+                <span class="muted" style="font-size:12px">${id?"Hal.":"Page"} ${page} / ${totalPages}</span>
+              </div>
+              <div class="service-list">
+                ${shown.length
+                  ? shown.map(({s,i}) => serviceRow(s, i)).join("")
+                  : `<div class="empty-state" style="padding:32px;text-align:center"><p>${id?"Tidak ada layanan ditemukan.":"No services found."}</p></div>`}
+              </div>
+              <div class="table-foot" style="padding:16px 0 0">
+                <span class="muted" style="font-size:13px">${id?"Menampilkan":"Showing"} ${Math.min((page-1)*perPage+1,total)}–${Math.min(page*perPage,total)} ${id?"dari":"of"} ${total.toLocaleString("id-ID")}</span>
                 ${paginationBar(page, totalPages, "data-svc-page")}
               </div>
             </article>
@@ -3616,7 +3615,7 @@
         const filterRow = `
           <div class="filter-row">
             <label class="filter-chip ${state.speedFilter!=="all"?"active":""}">
-              ⚡ ${id?"Kecepatan":"Speed"}:&nbsp;
+              ${id?"Kecepatan":"Speed"}:&nbsp;
               <select data-speed-filter>
                 <option value="all" ${state.speedFilter==="all"?"selected":""}>${id?"Semua":"All"}</option>
                 <option value="fast" ${state.speedFilter==="fast"?"selected":""}>Fast</option>
@@ -3624,20 +3623,20 @@
               </select>
             </label>
             <label class="filter-chip ${state.priceFilter!=="all"?"active":""}">
-              💰 ${id?"Harga":"Price"}:&nbsp;
+              ${id?"Harga":"Price"}:&nbsp;
               <select data-price-filter>
                 <option value="all" ${state.priceFilter==="all"?"selected":""}>${id?"Semua":"All"}</option>
-                <option value="low" ${state.priceFilter==="low"?"selected":""}>${id?"Budget":"Budget"} (&lt; IDR 15K/1K)</option>
-                <option value="mid" ${state.priceFilter==="mid"?"selected":""}>${id?"Sedang":"Mid"} (IDR 15K–60K/1K)</option>
-                <option value="high" ${state.priceFilter==="high"?"selected":""}>${id?"Premium":"Premium"} (&gt; IDR 60K/1K)</option>
+                <option value="low" ${state.priceFilter==="low"?"selected":""}>Budget &lt;15K</option>
+                <option value="mid" ${state.priceFilter==="mid"?"selected":""}>Mid 15–60K</option>
+                <option value="high" ${state.priceFilter==="high"?"selected":""}>Premium &gt;60K</option>
               </select>
             </label>
             <label class="filter-chip ${state.refillFilter?"active":""}">
               <input type="checkbox" ${state.refillFilter?"checked":""} data-refill-filter style="display:none">
-              🔄 ${id?"Refill Tersedia":"Refill Available"}${state.refillFilter?" ✓":""}
+              Refill${state.refillFilter?" ✓":""}
             </label>
             <label class="filter-chip" style="flex:1;max-width:280px">
-              🔍&nbsp;<input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:700;width:100%;min-width:60px" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
+              <input style="border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:12px;font-weight:600;width:100%;min-width:60px" placeholder="${t("searchServices")}" value="${attr(state.serviceSearch)}" data-service-search />
             </label>
           </div>`;
 
@@ -4956,6 +4955,14 @@
         }
         if (event.target.matches("[data-service-category]")) {
           setServiceFilter(event.target.value, state.serviceSearch);
+          state.serviceSubCat = "";
+          state.servicesPage = 1;
+          render();
+          return;
+        }
+        if (event.target.matches("[data-service-subcat]")) {
+          state.serviceSubCat = event.target.value;
+          state.servicesPage = 1;
           render();
           return;
         }
