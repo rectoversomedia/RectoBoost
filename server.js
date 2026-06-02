@@ -26,6 +26,15 @@ const { authLimiter, forgotLimiter, paymentLimiter } = await import("./lib/rateL
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 
+function calcTopupBonus(amount) {
+  if (amount >= 2000000) return Math.round(amount * 0.07);
+  if (amount >= 1000000) return Math.round(amount * 0.06);
+  if (amount >= 500000)  return Math.round(amount * 0.05);
+  if (amount >= 200000)  return Math.round(amount * 0.04);
+  if (amount >= 100000)  return Math.round(amount * 0.03);
+  return Math.round(amount * 0.02);
+}
+
 const COOKIE_MAX_AGE = 7 * 24 * 3600;
 
 const mimeTypes = {
@@ -767,13 +776,15 @@ async function handlePaymentTopup(req, res) {
     const rl = paymentLimiter(`topup:${userId}:${ip}`);
     if (!rl.allowed) return sendJson(res, 429, { error: `Terlalu banyak request — coba lagi dalam ${rl.retryAfter}s` });
 
-    const { amount, bonusAmount = 0, paymentMethod } = await readJson(req);
+    const { amount, paymentMethod } = await readJson(req);
     if (!amount || !paymentMethod) return sendJson(res, 400, { error: "amount dan paymentMethod wajib diisi" });
 
     const totalAmount = Number(amount);
     if (!Number.isInteger(totalAmount) || totalAmount < 10000) {
       return sendJson(res, 400, { error: "Minimum topup adalah IDR 10.000" });
     }
+    // Bonus calculated server-side — never trusted from client
+    const bonusAmount = calcTopupBonus(totalAmount);
 
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { wallet: true } });
     if (!user || !user.isActive) return sendJson(res, 404, { error: "User tidak ditemukan" });
@@ -831,7 +842,10 @@ async function handlePaymentWebhook(req, res) {
     const callbackSign = req.headers["x-callback-signature"] || "";
     const expectedSign = verifyWebhookSignature(rawBody);
 
-    if (callbackSign !== expectedSign) {
+    const sigA = Buffer.from(callbackSign, "hex");
+    const sigB = Buffer.from(expectedSign, "hex");
+    const sigValid = sigA.length === sigB.length && sigA.length > 0 && crypto.timingSafeEqual(sigA, sigB);
+    if (!sigValid) {
       console.warn("[webhook] Invalid signature");
       return sendJson(res, 401, { error: "Invalid signature" });
     }
@@ -1007,7 +1021,10 @@ function readJson(req) {
 function readRaw(req) {
   return new Promise((resolve, reject) => {
     let body = "";
-    req.on("data", (c) => { body += c; });
+    req.on("data", (c) => {
+      body += c;
+      if (body.length > 1_000_000) { req.destroy(); reject(new Error("Request too large")); }
+    });
     req.on("end",  () => resolve(body));
     req.on("error", reject);
   });

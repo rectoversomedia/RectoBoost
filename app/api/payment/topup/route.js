@@ -4,6 +4,15 @@ import { createTransaction } from "../../../../lib/tripay.js";
 import { prisma } from "../../../../lib/db.js";
 import { paymentLimiter } from "../../../../lib/rateLimit.js";
 
+function calcTopupBonus(amount) {
+  if (amount >= 2000000) return Math.round(amount * 0.07);
+  if (amount >= 1000000) return Math.round(amount * 0.06);
+  if (amount >= 500000)  return Math.round(amount * 0.05);
+  if (amount >= 200000)  return Math.round(amount * 0.04);
+  if (amount >= 100000)  return Math.round(amount * 0.03);
+  return Math.round(amount * 0.02);
+}
+
 export async function POST(request) {
   try {
     const { userId } = requireAuth(request);
@@ -15,7 +24,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { amount, bonusAmount = 0, paymentMethod } = body;
+    const { amount, paymentMethod } = body;
 
     if (!amount || !paymentMethod) {
       return apiError(new Error("amount dan paymentMethod wajib diisi"), 400);
@@ -25,6 +34,9 @@ export async function POST(request) {
     if (!Number.isInteger(totalAmount) || totalAmount < 10000) {
       return apiError(new Error("Minimum top up adalah IDR 10.000"), 400);
     }
+
+    // Bonus calculated server-side — never trusted from client
+    const bonusAmount = calcTopupBonus(totalAmount);
 
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { wallet: true } });
     if (!user || !user.isActive) {

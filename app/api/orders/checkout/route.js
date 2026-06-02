@@ -10,8 +10,8 @@ export async function POST(request) {
     const body = await request.json();
     const { serviceId, link, quantity, paymentId, runs, interval } = body;
 
-    if (!paymentId) {
-      return apiError(new Error("paymentId wajib diisi"), 400);
+    if (!serviceId || !quantity || !paymentId) {
+      return apiError(new Error("serviceId, quantity, dan paymentId wajib diisi"), 400);
     }
 
     // Verify payment belongs to authenticated user

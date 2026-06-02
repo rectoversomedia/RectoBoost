@@ -8,28 +8,23 @@ export async function POST(request) {
     const { userId } = requireAuth(request);
 
     const body = await request.json();
-    const { orderIds = [], providerOrderIds = [] } = body;
+    const { orderIds = [] } = body;
 
-    // If public orderIds provided, validate all belong to authenticated user
-    if (orderIds.length > 0) {
-      const orders = await prisma.order.findMany({
-        where: { publicId: { in: orderIds } },
-        select: { userId: true, providerOrderId: true },
-      });
-
-      if (orders.some(o => o.userId !== userId)) {
-        return apiError(new Error("Akses ditolak — beberapa order bukan milik Anda"), 403);
-      }
-
-      const ids = orders.map(o => o.providerOrderId).filter(Boolean);
-      return json(await cancelProviderOrders(ids));
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return apiError(new Error("orderIds wajib diisi"), 400);
     }
 
-    if (providerOrderIds.length === 0) {
-      return apiError(new Error("orderIds atau providerOrderIds wajib diisi"), 400);
+    const orders = await prisma.order.findMany({
+      where: { publicId: { in: orderIds } },
+      select: { userId: true, providerOrderId: true },
+    });
+
+    if (orders.some(o => o.userId !== userId)) {
+      return apiError(new Error("Akses ditolak — beberapa order bukan milik Anda"), 403);
     }
 
-    return json(await cancelProviderOrders(providerOrderIds));
+    const providerIds = orders.map(o => o.providerOrderId).filter(Boolean);
+    return json(await cancelProviderOrders(providerIds));
   } catch (error) {
     return apiError(error);
   }

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { json, apiError } from "../../../../lib/http.js";
 import { verifyWebhookSignature, mapTripayStatus } from "../../../../lib/tripay.js";
 import { prisma } from "../../../../lib/db.js";
@@ -11,7 +12,10 @@ export async function POST(request) {
     const callbackSign = request.headers.get("x-callback-signature") || "";
     const expectedSign = verifyWebhookSignature(rawBody);
 
-    if (callbackSign !== expectedSign) {
+    const a = Buffer.from(callbackSign, "hex");
+    const b = Buffer.from(expectedSign, "hex");
+    const signatureValid = a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b);
+    if (!signatureValid) {
       console.warn("[webhook] Invalid Tripay signature — rejecting");
       return apiError(new Error("Invalid signature"), 401);
     }
