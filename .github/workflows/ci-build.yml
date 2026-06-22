@@ -9,9 +9,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Dummy DATABASE_URL so prisma generate works in CI without a real DB
+      # CI mode - prevents actual DB connection during prisma generate
+      CI: "true"
+      # Dummy DATABASE_URL so prisma generate works without real DB
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci_dummy"
       DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci_dummy"
+      # Skip telemetry
+      NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
       - name: Checkout
@@ -32,7 +36,6 @@ jobs:
       - name: Build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-          NEXT_TELEMETRY_DISABLED: 1
         run: npm run build --if-present
 
       - name: Upload build artifacts
