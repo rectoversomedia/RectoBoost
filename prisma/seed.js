@@ -7,26 +7,9 @@
  * Run: node prisma/seed.js
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadEnv } from "../lib/env.js";
 
-const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
-
-function loadEnv() {
-  const envPath = join(rootDir, ".env");
-  if (!existsSync(envPath)) return;
-  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
-    if (!process.env[key]) process.env[key] = val;
-  }
-}
+// Load env first before any other imports
 loadEnv();
 
 const { PrismaClient } = await import("@prisma/client");

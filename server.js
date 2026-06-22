@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifyPassword } from "./lib/password.js";
+import { loadEnv } from "./lib/env.js";
 import crypto from "node:crypto";
 import dns from "node:dns";
 
@@ -10,7 +11,7 @@ import dns from "node:dns";
 dns.setDefaultResultOrder("ipv4first");
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
-loadEnv();
+// loadEnv() already called at top of file
 
 const { prisma }              = await import("./lib/db.js");
 const { sendPasswordResetEmail, sendWelcomeEmail } = await import("./lib/mailer.js");
@@ -115,7 +116,8 @@ const server = createServer(async (req, res) => {
     }
     if (path === "/api/payment/create"  && method === "POST") return await handlePaymentCreate(req, res);
     if (path === "/api/payment/topup"   && method === "POST") return await handlePaymentTopup(req, res);
-    if (path === "/api/payment/webhook" && method === "POST") return await handlePaymentWebhook(req, res);
+    // NOTE: /api/payment/webhook is handled by Next.js API route (app/api/payment/webhook/route.js)
+    // Do NOT add webhook handler here to avoid duplicate processing
 
     // ── Admin ─────────────────────────────────────────────────
     if (path === "/api/admin/stats" && method === "GET") return await handleAdminStats(req, res);
@@ -993,21 +995,6 @@ async function handleSmmwizProxy(req, res, url) {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-
-function loadEnv() {
-  const envPath = join(rootDir, ".env");
-  if (!existsSync(envPath)) return;
-  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
-    if (!process.env[key]) process.env[key] = val;
-  }
-}
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
