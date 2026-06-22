@@ -4,18 +4,17 @@ on:
   workflow_dispatch: {}
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # CI mode - prevents actual DB connection during prisma generate
-      CI: "true"
-      # Dummy DATABASE_URL so prisma generate works without real DB
-      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci_dummy"
-      DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci_dummy"
-      # Skip telemetry
+      # Skip Next.js telemetry
       NEXT_TELEMETRY_DISABLED: "1"
+      # CI mode - prevents prisma from connecting to DB
+      CI: "true"
 
     steps:
       - name: Checkout
@@ -27,16 +26,25 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Show Node version
+        run: node --version
+
+      - name: Show npm version
+        run: npm --version
+
+      - name: Show cache
+        run: ls -la node_modules 2>/dev/null || echo "No node_modules cached"
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --loglevel=verbose
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: npx prisma generate --no-engine
 
       - name: Build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        run: npm run build --if-present
+        run: npm run build
 
       - name: Upload build artifacts
         if: success()
