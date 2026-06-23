@@ -3172,6 +3172,8 @@
         const svcMax = Number(svcMaxRaw) || 100000;
         const cleanName = cleanServiceName(service[1], service[0]);
         const canContinue = state.link.trim().length > 0;
+        // Price per 1K from service
+        const pricePerK = (service && service[6] > 0) ? service[6] : 4500;
         return layout(`<section class="view shell">${pageHead("New Order")}<div class="grid">${stepper(2)}<div class="two-col"><article class="card section">
           <a class="tag" href="#/new-order">${svg(icon.back)}Kembali ke daftar layanan</a>
           <div style="display:flex;align-items:center;gap:16px;margin:22px 0">
@@ -3190,7 +3192,7 @@
           <div class="package-grid">
             ${tiers.map((p) => `<button class="package-card ${state.quantity === p.quantity ? "active" : ""}" data-package="${p.quantity}">
               <strong>${p.label}</strong>
-              <div class="pkg-price">IDR ${p.pricePerK.toLocaleString("id-ID")}<span>per 1.000</span></div>
+              <div class="pkg-price">IDR ${pricePerK.toLocaleString("id-ID")}<span>per 1.000</span></div>
               <div class="pkg-total">Total: <strong>${money(p.totalPrice)}</strong></div>
             </button>`).join("")}
           </div>
@@ -3205,12 +3207,13 @@
           <div class="range-row">
             <div class="qty-box">
               <button data-qty-action="-">-</button>
-              <strong data-qty-text>${state.quantity.toLocaleString("id-ID")}</strong>
+              <input type="number" data-qty-input min="${svcMin}" max="${svcMax}" step="50" value="${state.quantity}" style="background:transparent;border:0;outline:none;color:#fff;font-weight:bold;font-size:16px;width:80px;text-align:center" />
               <button data-qty-action="+">+</button>
             </div>
             <input type="range" min="${svcMin}" max="${Math.min(svcMax, 100000)}" step="50" value="${state.quantity}" data-qty-range />
             <span style="color:var(--blue-2);white-space:nowrap;font-size:13px">Min: ${svcMin.toLocaleString("id-ID")} – Max: ${Math.min(svcMax,100000).toLocaleString("id-ID")}</span>
           </div>
+          <p class="muted" style="font-size:12px;margin-top:8px">Harga per 1.000: <strong style="color:var(--green)">IDR ${pricePerK.toLocaleString("id-ID")}</strong> &nbsp;|&nbsp; Total: <strong style="color:var(--blue-2)">${money(state.price)}</strong></p>
         </article><div class="grid">${orderSummary()}${tips()}</div></div>
         <div class="card bottom-bar">
           <div>${svg(icon.clock)} <span class="muted">Estimasi Waktu</span><br><strong>10 – 60 Menit</strong></div>
@@ -4896,7 +4899,11 @@
         if (qtyButton) {
           event.preventDefault();
           const delta = qtyButton.dataset.qtyAction === "+" ? 100 : -100;
-          setQuantity(state.quantity + delta);
+          const service = selectedServiceData();
+          const svcMinRaw = String(service[7] || "100").split("-")[0].trim().replace(/[^0-9]/g, "");
+          const svcMin = Number(svcMinRaw) || 100;
+          const newQty = Math.max(svcMin, state.quantity + delta);
+          setQuantity(newQty);
           render();
         }
       });
@@ -4929,6 +4936,15 @@
           // Update summary without full re-render (for performance)
           const totalEl = document.querySelector(".order-summary-total");
           if (totalEl) totalEl.textContent = money(state.price);
+          return;
+        }
+
+        if (event.target.matches("[data-qty-input]")) {
+          const val = Number(event.target.value);
+          if (!isNaN(val) && val > 0) {
+            setQuantity(val);
+            render();
+          }
           return;
         }
 

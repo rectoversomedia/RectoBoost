@@ -17,9 +17,9 @@ const { hashPassword  } = await import("../lib/password.js");
 
 const prisma = new PrismaClient();
 
-// Read admin password from env, fallback to a strong default
+// Read admin password from env, fallback to a simple default
 const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    || "admin@rectoboost.com";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "RectoBoost@2026!";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
 const ADMIN_NAME     = process.env.ADMIN_NAME     || "Admin RectoBoost";
 
 async function upsertUser({ email, password, fullName, username, role }) {
