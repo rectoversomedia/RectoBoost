@@ -23,9 +23,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  output:                "standalone",
-  outputFileTracingRoot: process.cwd(),
-  poweredByHeader:       false,
+  poweredByHeader: false,
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

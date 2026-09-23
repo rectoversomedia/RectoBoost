@@ -38,8 +38,8 @@ Set for **Production**, **Preview**, and **Development**:
 
 | Name | Value | Note |
 |------|-------|------|
-| `DATABASE_URL` | `postgresql://postgres:SabrinaBaby1992!@db.zvniuvrxgboubaegbclt.supabase.co:5432/postgres?pgbouncer=true` | |
-| `DIRECT_URL` | `postgresql://postgres:SabrinaBaby1992!@db.zvniuvrxgboubaegbclt.supabase.co:5432/postgres` | For Prisma migrations |
+| `DATABASE_URL` | `postgresql://postgres:YOUR_SUPABASE_PASSWORD@db.zvniuvrxgboubaegbclt.supabase.co:5432/postgres?pgbouncer=true` | |
+| `DIRECT_URL` | `postgresql://postgres:YOUR_SUPABASE_PASSWORD@db.zvniuvrxgboubaegbclt.supabase.co:5432/postgres` | For Prisma migrations |
 | `JWT_SECRET` | *(generate below)* | Auth signing key |
 | `SYNC_SECRET` | *(generate below)* | Sync endpoint security |
 | `SMMWIZ_API_KEY` | `4acce9a49d0fd6ed2865ec099bccd84e` | |
@@ -254,13 +254,13 @@ CREATE INDEX IF NOT EXISTS "PasswordReset_userId_idx" ON "PasswordReset"(userId)
 ```bash
 # Method A: Use the seed script (recommended)
 ADMIN_EMAIL=admin@rectoversomedia.com \
-ADMIN_PASSWORD=SabrinaBaby1992! \
+ADMIN_PASSWORD=YOUR_SUPABASE_PASSWORD \
   node prisma/seed.js
 
 # Method B: Generate password hash manually, then insert
 node -e "
 const crypto = require('crypto');
-const pw = 'SabrinaBaby1992!';
+const pw = 'YOUR_SUPABASE_PASSWORD';
 const salt = crypto.randomBytes(16).toString('hex');
 const hash = crypto.pbkdf2Sync(pw, salt, 100000, 64, 'sha512').toString('hex');
 console.log('pbkdf2:100000:' + salt + ':' + hash);
