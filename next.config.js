@@ -24,6 +24,18 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "/api/:path*",
+      },
+      {
+        source: "/:path*",
+        destination: "/api/spa",
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
