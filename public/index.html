@@ -2579,22 +2579,19 @@
         "swiss":"Switzerland","switzerland":"Switzerland"
       };
       const COUNTRY_DISPLAY = {
-        "Global":"🌍 Global / Worldwide","USA":"🇺🇸 USA","United Kingdom":"🇬🇧 UK","India":"🇮🇳 India",
-        "China":"🇨🇳 China","Russia":"🇷🇺 Russia","Japan":"🇯🇵 Japan","Korea":"🇰🇷 Korea",
-        "Brazil":"🇧🇷 Brazil","Germany":"🇩🇪 Germany","France":"🇫🇷 France","Spain":"🇪🇸 Spain",
-        "Italy":"🇮🇹 Italy","Australia":"🇦🇺 Australia","Canada":"🇨🇦 Canada","Mexico":"🇲🇽 Mexico",
-        "Turkey":"🇹🇷 Turkey","Indonesia":"🇮🇩 Indonesia","Philippines":"🇵🇭 Philippines",
-        "Malaysia":"🇲🇾 Malaysia","Singapore":"🇸🇬 Singapore","Thailand":"🇹🇭 Thailand",
-        "Vietnam":"🇻🇳 Vietnam","Taiwan":"🇹🇼 Taiwan","Egypt":"🇪🇬 Egypt","Nigeria":"🇳🇬 Nigeria",
-        "Pakistan":"🇵🇰 Pakistan","Bangladesh":"🇧🇩 Bangladesh","UAE":"🇦🇪 UAE / Saudi",
-        "Saudi Arabia":"🇸🇦 Saudi Arabia","Arab":"🇸🇦 Arab","Latin":"🌎 Latin America",
-        "Europe":"🇪🇺 Europe","Netherlands":"🇳🇱 Netherlands","Sweden":"🇸🇪 Sweden",
-        "Norway":"🇳🇴 Norway","Denmark":"🇩🇰 Denmark","Finland":"🇫🇮 Finland",
-        "Portugal":"🇵🇹 Portugal","Argentina":"🇦🇷 Argentina","Colombia":"🇨🇴 Colombia",
-        "Chile":"🇨🇱 Chile","Peru":"🇵🇪 Peru","Czech":"🇨🇿 Czech","Poland":"🇵🇱 Poland",
-        "Israel":"🇮🇱 Israel","Iran":"🇮🇷 Iran","Iraq":"🇮🇶 Iraq","Myanmar":"🇲🇲 Myanmar",
-        "Cambodia":"🇰🇭 Cambodia","Laos":"🇱🇦 Laos","Sri Lanka":"🇱🇰 Sri Lanka",
-        "Nepal":"🇳🇵 Nepal","Switzerland":"🇨🇭 Switzerland","Netherlands":"🇳🇱 Netherlands"
+        "Global":"Global / Worldwide","USA":"USA","United Kingdom":"United Kingdom (UK)","India":"India",
+        "China":"China","Russia":"Russia","Japan":"Japan","Korea":"Korea","Brazil":"Brazil",
+        "Germany":"Germany","France":"France","Spain":"Spain","Italy":"Italy","Australia":"Australia",
+        "Canada":"Canada","Mexico":"Mexico","Turkey":"Turkey","Indonesia":"Indonesia",
+        "Philippines":"Philippines","Malaysia":"Malaysia","Singapore":"Singapore","Thailand":"Thailand",
+        "Vietnam":"Vietnam","Taiwan":"Taiwan","Egypt":"Egypt","Nigeria":"Nigeria","Pakistan":"Pakistan",
+        "Bangladesh":"Bangladesh","UAE":"UAE / Saudi Arabia","Saudi Arabia":"Saudi Arabia",
+        "Arab":"Arab","Latin":"Latin America","Europe":"Europe","Netherlands":"Netherlands",
+        "Sweden":"Sweden","Norway":"Norway","Denmark":"Denmark","Finland":"Finland",
+        "Portugal":"Portugal","Argentina":"Argentina","Colombia":"Colombia","Chile":"Chile",
+        "Peru":"Peru","Czech":"Czech Republic","Poland":"Poland","Israel":"Israel","Iran":"Iran",
+        "Iraq":"Iraq","Myanmar":"Myanmar","Cambodia":"Cambodia","Laos":"Laos","Sri Lanka":"Sri Lanka",
+        "Nepal":"Nepal","Switzerland":"Switzerland"
       };
 
       function extractCountry(name) {
@@ -2609,16 +2606,19 @@
         return COUNTRY_DISPLAY[country] || country;
       }
 
-      // Build unique country list from all services (computed once)
+      // Build unique country list from ALL services (reset when services change)
       let _allCountries = null;
+      let _allCountriesSvcLen = 0;
       function getAllCountries() {
-        if (_allCountries) return _allCountries;
-        const seen = new Set();
-        for (const s of services) {
-          const c = extractCountry(s[1]);
-          if (c) seen.add(c);
+        if (!_allCountries || services.length !== _allCountriesSvcLen) {
+          const seen = new Set();
+          for (const s of services) {
+            const c = extractCountry(s[1]);
+            if (c) seen.add(c);
+          }
+          _allCountries = Array.from(seen).sort();
+          _allCountriesSvcLen = services.length;
         }
-        _allCountries = Array.from(seen).sort();
         return _allCountries;
       }
 
