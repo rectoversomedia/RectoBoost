@@ -2211,6 +2211,8 @@
         ordersExported: false,
         statusRefreshed: false,
         settingsSaved: false,
+        pricingConfig: null,
+        pricingSaved: false,
         securityUpdated: false,
         notificationsRead: false,
         smmwizSynced: false,
@@ -3220,7 +3222,7 @@
           <div><span class="muted">Total Jumlah</span><br><strong>${qtyLabel()}</strong></div>
           <div><span class="muted">Total Harga</span><br><span class="total">${money(state.price)}</span></div>
           ${canContinue
-            ? `<a class="btn primary" href="#/new-order/confirm">Lanjutkan ${svg(icon.arrow)}</a>`
+            ? `<div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn primary" href="#/new-order/confirm">Order Sekarang ${svg(icon.arrow)}</a><button class="btn ghost" data-request-quote>${svg(icon.message)} Request Quote (Nego)</button></div>`
             : `<button class="btn primary" disabled style="opacity:.5;cursor:not-allowed" title="Masukkan link terlebih dahulu">Lanjutkan ${svg(icon.arrow)}</button>`}
         </div></div></section>`);
       }
@@ -4082,6 +4084,54 @@
               <div class="grid">
                 ${state.settingsSaved ? `<div class="notice">${svg(icon.check)} ${id?"Pengaturan berhasil disimpan.":"Settings saved successfully."}</div>` : ""}
                 ${state.securityUpdated ? `<div class="notice">${svg(icon.shield)} ${id?"Password berhasil diubah.":"Password updated."}</div>` : ""}
+                ${state.pricingSaved ? `<div class="notice">${svg(icon.check)} ${id?"Pricing berhasil diupdate. Semua layanan sudah di-recalculate.":"Pricing updated. All services recalculated."}</div>` : ""}
+
+                ${u.role === "ADMIN" ? `
+                <article class="card section" style="border:1px solid rgba(8,119,255,.4)">
+                  <h2 style="color:#0877ff">⚙️ Admin: Pricing & Margin</h2>
+                  <p class="muted" style="font-size:13px;margin-bottom:16px">
+                    Atur markup global. Formula: <code style="background:#0a1627;padding:2px 6px;border-radius:4px">retail = USD rate × IDR rate × multiplier</code>, lalu auto-round ke harga "rapi".
+                  </p>
+                  <form data-pricing-form>
+                    <div class="form-grid">
+                      <div class="field-group">
+                        <label>USD → IDR Rate</label>
+                        <input class="field" type="number" name="usdIdrRate" value="${state.pricingConfig?.usdIdrRate || 19000}" />
+                        <small class="muted">Default 19000</small>
+                      </div>
+                      <div class="field-group">
+                        <label>Price Multiplier (markup)</label>
+                        <input class="field" type="number" step="0.1" name="priceMultiplier" value="${state.pricingConfig?.priceMultiplier || 5}" />
+                        <small class="muted">5 = 500% markup dari modal</small>
+                      </div>
+                      <div class="field-group">
+                        <label>Min Price per 1k (IDR)</label>
+                        <input class="field" type="number" name="minPricePer1k" value="${state.pricingConfig?.minPricePer1k || 1000}" />
+                      </div>
+                      <div class="field-group">
+                        <label>Tampilkan harga modal + markup?</label>
+                        <select class="field" name="showBothPrices">
+                          <option value="true" ${state.pricingConfig?.showBothPrices ? "selected" : ""}>Ya (lebih transparan)</option>
+                          <option value="false" ${!state.pricingConfig?.showBothPrices ? "selected" : ""}>Tidak (harga jual saja)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="settings-actions" style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+                      <button class="btn primary" type="submit">💾 Save & Recalculate All</button>
+                      <button class="btn ghost" type="button" data-sync-services>🔄 Sync Services from SMMWIZ</button>
+                    </div>
+                    <p class="muted" style="font-size:11px;margin-top:8px">
+                      💡 Contoh: USD $0.001 × 19000 × 5 = IDR 95 → di-round ke 100. Provider rate $0.0008 → modal ~76 → markup jadi 380 → round ke 500.
+                    </p>
+                  </form>
+                </article>
+
+                <article class="card section" style="border:1px solid rgba(255,193,7,.4)">
+                  <h2 style="color:#ffb31a">📨 Quote Requests (Nego)</h2>
+                  <p class="muted" style="font-size:13px;margin-bottom:16px">Customer yang request harga khusus / bulk discount.</p>
+                  <div id="quotes-list"><div class="muted">Loading...</div></div>
+                </article>
+                ` : ""}
 
                 <article class="card section">
                   <h2>${id?"Informasi Akun":"Account Information"}</h2>
@@ -4906,6 +4956,13 @@
           setQuantity(newQty);
           render();
         }
+
+        const quoteBtn = event.target.closest("[data-request-quote]");
+        if (quoteBtn) {
+          event.preventDefault();
+          openQuoteModal();
+          return;
+        }
       });
 
       document.addEventListener("input", (event) => {
@@ -5080,6 +5137,32 @@
       }
 
       document.addEventListener("submit", (event) => {
+        if (event.target.matches("[data-pricing-form]")) {
+          event.preventDefault();
+          const fd = new FormData(event.target);
+          const payload = {
+            usdIdrRate: Number(fd.get("usdIdrRate")),
+            priceMultiplier: Number(fd.get("priceMultiplier")),
+            minPricePer1k: Number(fd.get("minPricePer1k")),
+            showBothPrices: fd.get("showBothPrices") === "true",
+          };
+          apiPost("/api/admin/pricing", payload)
+            .then(async () => {
+              state.pricingSaved = true;
+              // Reload services to reflect new pricing
+              await syncSmmwiz();
+              // Trigger recalculation by re-fetching
+              try {
+                await apiGet("/api/services");
+                if (state.allServices) state.allServices = await apiGet("/api/services");
+              } catch (e) {}
+              setTimeout(() => { state.pricingSaved = false; render(); }, 3000);
+              render();
+            })
+            .catch((e) => { showToast("Gagal: " + (e.message || "unknown"), "error"); });
+          return;
+        }
+
         if (event.target.matches("[data-forgot-form]")) {
           event.preventDefault();
           const email = String(new FormData(event.target).get("email") || "").trim().toLowerCase();
@@ -5148,8 +5231,203 @@
           .catch(() => {});
       }
 
+      // ── Quote Request Modal ────────────────────────────────────
+      function openQuoteModal() {
+        const service = selectedServiceData();
+        if (!service) {
+          showToast("Pilih layanan dulu sebelum request quote", "error");
+          return;
+        }
+        if (!state.link) {
+          showToast("Masukkan link target dulu", "error");
+          return;
+        }
+        const svcName = service[1] || "Service";
+        const svcId = service[8] || service[0];
+        const autoPrice = state.price || 0;
+
+        const existing = document.getElementById("quote-modal");
+        if (existing) existing.remove();
+
+        const modal = document.createElement("div");
+        modal.id = "quote-modal";
+        modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px";
+        modal.innerHTML = `
+          <div style="background:#07111f;border:1px solid rgba(124,167,231,.16);border-radius:12px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow:auto">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+              <h2 style="margin:0;font-size:18px">Request Quote — Nego Harga</h2>
+              <button data-quote-close style="background:none;border:0;color:#fff;font-size:24px;cursor:pointer;padding:0;width:32px;height:32px">×</button>
+            </div>
+            <p style="color:#8c99b0;font-size:13px;margin:0 0 20px">
+              Order dalam jumlah besar atau punya budget tertentu? Submit proposal harga, admin akan follow up via email.
+            </p>
+            <div style="background:#0a1627;padding:14px;border-radius:8px;margin-bottom:18px">
+              <div style="font-size:12px;color:#8c99b0">Layanan</div>
+              <div style="font-weight:600;margin:4px 0">${escapeHtml(svcName)}</div>
+              <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px">
+                <span style="color:#8c99b0">Quantity: <strong style="color:#fff">${state.quantity.toLocaleString("id-ID")}</strong></span>
+                <span style="color:#8c99b0">Harga otomatis: <strong style="color:#0877ff">${money(autoPrice)}</strong></span>
+              </div>
+            </div>
+            <form id="quote-form" style="display:grid;gap:14px">
+              <label>
+                <div style="font-size:12px;color:#8c99b0;margin-bottom:4px">Nama *</div>
+                <input name="customerName" required style="width:100%;padding:10px;background:#0a1627;border:1px solid rgba(124,167,231,.16);border-radius:6px;color:#fff" placeholder="Nama kamu" />
+              </label>
+              <label>
+                <div style="font-size:12px;color:#8c99b0;margin-bottom:4px">Email *</div>
+                <input name="customerEmail" type="email" required style="width:100%;padding:10px;background:#0a1627;border:1px solid rgba(124,167,231,.16);border-radius:6px;color:#fff" placeholder="email@kamu.com" />
+              </label>
+              <label>
+                <div style="font-size:12px;color:#8c99b0;margin-bottom:4px">WhatsApp (optional)</div>
+                <input name="customerPhone" style="width:100%;padding:10px;background:#0a1627;border:1px solid rgba(124,167,231,.16);border-radius:6px;color:#fff" placeholder="08xxx" />
+              </label>
+              <label>
+                <div style="font-size:12px;color:#8c99b0;margin-bottom:4px">Harga yang lo inginkan (opsional)</div>
+                <input name="proposedPrice" type="number" style="width:100%;padding:10px;background:#0a1627;border:1px solid rgba(124,167,231,.16);border-radius:6px;color:#fff" placeholder="Contoh: 500000 (IDR)" />
+                <div style="font-size:11px;color:#8c99b0;margin-top:4px">Kosongkan jika lo mau admin yang nentuin</div>
+              </label>
+              <div style="display:flex;gap:10px;margin-top:8px">
+                <button type="button" data-quote-close style="flex:1;padding:10px;background:transparent;border:1px solid rgba(124,167,231,.16);border-radius:6px;color:#fff;cursor:pointer">Batal</button>
+                <button type="submit" style="flex:2;padding:10px;background:#0877ff;border:0;border-radius:6px;color:#fff;font-weight:600;cursor:pointer">Kirim Request</button>
+              </div>
+            </form>
+            <div id="quote-success" style="display:none;text-align:center;padding:20px">
+              <div style="font-size:48px;margin-bottom:10px">✅</div>
+              <h3 style="margin:0 0 10px">Quote Terkirim!</h3>
+              <p style="color:#8c99b0;font-size:13px;margin:0">Admin akan follow up ke email lo dalam 1×24 jam.</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelectorAll("[data-quote-close]").forEach((btn) => {
+          btn.addEventListener("click", () => modal.remove());
+        });
+
+        modal.querySelector("#quote-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const payload = {
+            serviceId: svcId,
+            serviceName: svcName,
+            link: state.link,
+            quantity: state.quantity,
+            customerName: fd.get("customerName"),
+            customerEmail: fd.get("customerEmail"),
+            customerPhone: fd.get("customerPhone"),
+            proposedPrice: fd.get("proposedPrice") || null,
+          };
+          try {
+            const res = await fetch("/api/quotes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+              document.getElementById("quote-form").style.display = "none";
+              document.getElementById("quote-success").style.display = "block";
+              setTimeout(() => modal.remove(), 3000);
+            } else {
+              showToast(data.error || "Gagal submit quote", "error");
+            }
+          } catch (err) {
+            showToast("Network error: " + err.message, "error");
+          }
+        });
+      }
+
+      function escapeHtml(str) {
+        return String(str || "").replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        })[c]);
+      }
+
       render();
       syncSmmwiz();
+
+      // Load pricing config + quotes for admin
+      function loadAdminData() {
+        if (!state.currentUser || state.currentUser.role !== "ADMIN") return;
+        apiGet("/api/admin/pricing")
+          .then((d) => { state.pricingConfig = d.config; render(); })
+          .catch(() => {});
+        apiGet("/api/admin/quotes")
+          .then((d) => {
+            const el = document.getElementById("quotes-list");
+            if (!el) return;
+            if (!d.quotes?.length) {
+              el.innerHTML = '<div class="muted">Belum ada quote request.</div>';
+              return;
+            }
+            el.innerHTML = d.quotes.slice(0, 20).map(q => `
+              <div style="border:1px solid rgba(124,167,231,.16);padding:12px;border-radius:8px;margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <strong style="font-size:13px">${escapeHtml(q.customerName || q.customerEmail || "Anonim")}</strong>
+                  <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:${q.status === 'PENDING' ? '#ffb31a' : q.status === 'QUOTED' ? '#0877ff' : '#8c99b0'};color:#000">${q.status}</span>
+                </div>
+                <div style="font-size:12px;color:#8c99b0">${escapeHtml(q.serviceName)} • ${q.quantity.toLocaleString("id-ID")} pcs</div>
+                <div style="font-size:11px;color:#8c99b0;margin-top:4px">${escapeHtml(q.customerEmail || "")} ${q.customerPhone ? "• " + escapeHtml(q.customerPhone) : ""}</div>
+                ${q.proposedPrice ? `<div style="font-size:12px;margin-top:6px">Harga proposed: <strong style="color:#ffb31a">IDR ${q.proposedPrice.toLocaleString("id-ID")}</strong></div>` : ""}
+                ${q.finalPrice ? `<div style="font-size:12px">Harga final: <strong style="color:#05d98b">IDR ${q.finalPrice.toLocaleString("id-ID")}</strong></div>` : ""}
+                <div style="display:flex;gap:6px;margin-top:8px">
+                  <button class="btn small" data-quote-action='{"id":"${q.publicId}","status":"QUOTED"}'>Set Price</button>
+                  <button class="btn small ghost" data-quote-action='{"id":"${q.publicId}","status":"REJECTED"}'>Reject</button>
+                </div>
+              </div>
+            `).join("");
+          })
+          .catch(() => {});
+      }
+
+      // Re-load on route change to /settings
+      const _origRender = render;
+      // Patch: try to detect admin on settings page
+      const _origHashHandler = () => {};
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("[data-sync-services]")) {
+          event.preventDefault();
+          showToast("Syncing services...", "info");
+          apiPost("/api/services/sync", {})
+            .then(() => {
+              showToast("✅ Services synced!", "success");
+              location.reload();
+            })
+            .catch((e) => showToast("Gagal: " + e.message, "error"));
+          return;
+        }
+        const qa = event.target.closest("[data-quote-action]");
+        if (qa) {
+          event.preventDefault();
+          const data = JSON.parse(qa.dataset.quoteAction);
+          if (data.status === "QUOTED") {
+            const finalPrice = prompt("Set final price (IDR):");
+            if (!finalPrice) return;
+            data.finalPrice = Number(finalPrice);
+          }
+          apiPost("/api/admin/quotes", { ...data, _method: "PATCH" }).catch(() => {});
+          // Use direct fetch since apiPost is POST
+          fetch("/api/admin/quotes", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          })
+            .then(() => { showToast("✅ Updated", "success"); setTimeout(() => location.reload(), 800); })
+            .catch((e) => showToast("Gagal: " + e.message, "error"));
+          return;
+        }
+      });
+
+      // Load admin data whenever settings page renders
+      const _origSettingsRender = settingsPage;
+      // Hook: load on initial + after login
+      setTimeout(loadAdminData, 1000);
+      const _origLogin = apiPost;
+      // Also load on hash change
+      window.addEventListener("hashchange", () => {
+        if (location.hash === "#/settings") setTimeout(loadAdminData, 200);
+      });
     </script>
   </body>
 </html>

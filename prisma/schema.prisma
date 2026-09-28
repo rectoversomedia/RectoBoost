@@ -229,3 +229,33 @@ model PasswordReset {
   @@index([token])
   @@index([userId])
 }
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model QuoteRequest {
+  id            String        @id @default(cuid())
+  publicId      String        @unique
+  userId        String?
+  customerEmail String?
+  customerName  String?
+  customerPhone String?
+  serviceId     String
+  serviceName   String
+  link          String
+  quantity      Int
+  proposedPrice Int?
+  finalPrice    Int?
+  status        String        @default("PENDING")
+  adminNote     String?
+  expiresAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
