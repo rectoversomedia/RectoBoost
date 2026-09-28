@@ -109,7 +109,7 @@ model WalletTransaction {
 model Service {
   id                  String   @id @default(cuid())
   provider            String   @default("smmwiz")
-  providerServiceId   String   @unique
+  providerServiceId   String
   name                String
   category            String
   type                String?
@@ -126,8 +126,10 @@ model Service {
   updatedAt           DateTime @updatedAt
   orders              Order[]
 
+  @@unique([provider, providerServiceId])
   @@index([category])
   @@index([isActive])
+  @@index([provider])
 }
 
 model Payment {
@@ -228,6 +230,23 @@ model PasswordReset {
 
   @@index([token])
   @@index([userId])
+}
+
+model Provider {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  apiKey      String
+  apiUrl      String
+  enabled     Boolean  @default(true)
+  priority    Int      @default(1)
+  isHealthy   Boolean  @default(true)
+  lastSyncAt  DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
 }
 
 model Setting {

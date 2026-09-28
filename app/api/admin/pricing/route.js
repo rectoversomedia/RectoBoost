@@ -4,12 +4,16 @@ import {
   getPricingConfig,
   updatePricingConfig,
 } from "../../../../lib/pricing.js";
+import { listProviders } from "../../../../lib/providers.js";
 
 export async function GET(request) {
   try {
     requireAdmin(request);
-    const config = await getPricingConfig();
-    return json({ success: true, config });
+    const [config, providers] = await Promise.all([
+      getPricingConfig(),
+      listProviders(),
+    ]);
+    return json({ success: true, config, providers });
   } catch (error) {
     return apiError(error);
   }

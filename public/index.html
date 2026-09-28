@@ -2214,6 +2214,7 @@
         settingsSaved: false,
         pricingConfig: null,
         pricingSaved: false,
+        providers: [],
         securityUpdated: false,
         notificationsRead: false,
         smmwizSynced: false,
@@ -4119,12 +4120,43 @@
                     </div>
                     <div class="settings-actions" style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
                       <button class="btn primary" type="submit">💾 Save & Recalculate All</button>
-                      <button class="btn ghost" type="button" data-sync-services>🔄 Sync Services from SMMWIZ</button>
                     </div>
                     <p class="muted" style="font-size:11px;margin-top:8px">
                       💡 Contoh: USD $0.001 × 19000 × 5 = IDR 95 → di-round ke 100. Provider rate $0.0008 → modal ~76 → markup jadi 380 → round ke 500.
                     </p>
                   </form>
+                </article>
+
+                <article class="card section" style="border:1px solid rgba(139,92,246,.4)">
+                  <h2 style="color:#8b5cf6">🔗 Provider: SMMWIZ & YTBOT</h2>
+                  <p class="muted" style="font-size:13px;margin-bottom:16px">
+                    Aktifkan provider. Sistem auto-pilih harga termurah. YTBOT di-sync terpisah.
+                  </p>
+                  <div style="display:grid;gap:12px">
+                    ${(state.providers || []).map(p => `
+                      <div style="border:1px solid rgba(124,167,231,.2);border-radius:8px;padding:14px;background:#0a1627">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                          <div>
+                            <strong style="font-size:14px">${p.name.toUpperCase()}</strong>
+                            <span style="font-size:11px;margin-left:8px;padding:2px 7px;border-radius:4px;background:${p.isHealthy ? 'rgba(5,217,139,.2);color:#05d98b' : 'rgba(255,79,85,.2);color:#ff4f55'};color:${p.isHealthy ? '#05d98b' : '#ff4f55'}">${p.isHealthy ? '🟢 Healthy' : '🔴 Error'}</span>
+                            ${!p.enabled ? '<span style="font-size:11px;margin-left:6px;padding:2px 7px;border-radius:4px;background:rgba(140,153,176,.2);color:#8c99b0">DISABLED</span>' : ''}
+                          </div>
+                          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                            <input type="checkbox" data-provider-toggle="${p.name}" ${p.enabled ? "checked" : ""} style="width:16px;height:16px;accent-color:#8b5cf6" />
+                            <span style="font-size:12px">Aktif</span>
+                          </label>
+                        </div>
+                        ${p.lastSyncAt ? `<div style="font-size:11px;color:#8c99b0;margin-bottom:8px">Last sync: ${new Date(p.lastSyncAt).toLocaleString("id-ID")}</div>` : ""}
+                        ${p.lastError ? `<div style="font-size:11px;color:#ff4f55;margin-bottom:8px">Error: ${p.lastError.slice(0,80)}</div>` : ""}
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                          ${p.name === "smmwiz" ? `<button class="btn small ghost" data-sync-provider="smmwiz">🔄 Sync SMMWIZ</button>` : ""}
+                          ${p.name === "ytbot" ? `<button class="btn small ghost" data-sync-provider="ytbot">🔄 Sync YTBOT</button>` : ""}
+                          <button class="btn small ghost" data-sync-all-providers>🔄 Sync ALL</button>
+                        </div>
+                      </div>
+                    `).join("")}
+                    ${!state.providers?.length ? '<div class="muted">Run migration dulu: POST /api/admin/migrate</div>' : ""}
+                  </div>
                 </article>
 
                 <article class="card section" style="border:1px solid rgba(255,193,7,.4)">
@@ -5352,7 +5384,11 @@
       function loadAdminData() {
         if (!state.currentUser || state.currentUser.role !== "ADMIN") return;
         apiGet("/api/admin/pricing")
-          .then((d) => { state.pricingConfig = d.config; render(); })
+          .then((d) => {
+            state.pricingConfig = d.config;
+            state.providers = d.providers || [];
+            render();
+          })
           .catch(() => {});
         apiGet("/api/admin/quotes")
           .then((d) => {
@@ -5395,6 +5431,46 @@
               showToast("✅ Services synced!", "success");
               location.reload();
             })
+            .catch((e) => showToast("Gagal: " + e.message, "error"));
+          return;
+        }
+        const syncProv = event.target.closest("[data-sync-provider]");
+        if (syncProv) {
+          event.preventDefault();
+          const prov = syncProv.dataset.syncProvider;
+          showToast(`Syncing ${prov.toUpperCase()}...`, "info");
+          apiPost(`/api/services/sync?provider=${prov}`, {})
+            .then((r) => {
+              showToast(`✅ ${prov.toUpperCase()} synced: ${r.synced} services`, "success");
+              loadAdminData();
+            })
+            .catch((e) => showToast(`Gagal sync ${prov}: ` + e.message, "error"));
+          return;
+        }
+        if (event.target.closest("[data-sync-all-providers]")) {
+          event.preventDefault();
+          showToast("Syncing ALL providers...", "info");
+          apiPost("/api/services/sync?all=true", {})
+            .then((r) => {
+              const msg = Object.entries(r.results || {})
+                .map(([k, v]) => `${k}: ${v.synced} synced`)
+                .join(", ");
+              showToast("✅ All synced! " + msg, "success");
+              loadAdminData();
+            })
+            .catch((e) => showToast("Gagal: " + e.message, "error"));
+          return;
+        }
+        const provToggle = event.target.closest("[data-provider-toggle]");
+        if (provToggle && provToggle.type === "checkbox") {
+          const provName = provToggle.dataset.providerToggle;
+          const enabled = provToggle.checked;
+          fetch("/api/admin/providers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: provName, enabled }),
+          })
+            .then(() => showToast(`${provName.toUpperCase()} ${enabled ? "enabled" : "disabled"}`, "success"))
             .catch((e) => showToast("Gagal: " + e.message, "error"));
           return;
         }
