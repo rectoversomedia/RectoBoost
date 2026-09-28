@@ -1,9 +1,9 @@
-import { json, apiError } from "../../../lib/http.js";
-import { requireAdmin } from "../../../lib/auth.js";
+import { json, apiError } from "../../../../lib/http.js";
+import { requireAdmin } from "../../../../lib/auth.js";
 import {
   getPricingConfig,
   updatePricingConfig,
-} from "../../../lib/pricing.js";
+} from "../../../../lib/pricing.js";
 
 export async function GET(request) {
   try {

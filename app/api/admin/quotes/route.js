@@ -1,6 +1,6 @@
-import { json, apiError } from "../../../lib/http.js";
-import { requireAdmin } from "../../../lib/auth.js";
-import { prisma } from "../../../lib/db.js";
+import { json, apiError } from "../../../../lib/http.js";
+import { requireAdmin } from "../../../../lib/auth.js";
+import { prisma } from "../../../../lib/db.js";
 
 export async function GET(request) {
   try {
