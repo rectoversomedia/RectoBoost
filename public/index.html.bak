@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RectoBoost Dashboard</title>
-    <link rel="icon" type="image/png" href="/assets/rectoboost-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -2817,7 +2816,7 @@
         return `
           <div class="sidebar-overlay" data-close-sidebar></div>
           <aside class="sidebar">
-            <a class="logo" href="#/dashboard" data-close-sidebar><img src="/assets/rectoboost-logo.png" alt="RectoBoost" /></a>
+            <a class="logo" href="#/dashboard" data-close-sidebar><img src="assets/rectoboost-logo.png" alt="RectoBoost" /></a>
             <nav class="nav">
               ${menu().map(([key, label, href, paths]) => `<a class="nav-item ${active === key ? "active" : ""}" href="${href}" data-close-sidebar>${svg(paths)}<span class="nav-label">${label}</span></a>`).join("")}
             </nav>
@@ -2849,7 +2848,7 @@
               </a>
               <a class="bell" href="#/notifications" aria-label="Notifications">${svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>')}</a>
               <a class="user" href="#/settings">
-                <div class="avatar"><img src="/assets/user-avatar.svg" alt="${state.currentUser?.fullName || 'User'}" /></div>
+                <div class="avatar"><img src="assets/user-avatar.svg" alt="${state.currentUser?.fullName || 'User'}" /></div>
                 <div><div class="user-name">${state.currentUser?.fullName || state.currentUser?.email || 'User'}</div><div class="role">${state.currentUser?.role === 'ADMIN' ? 'Admin' : 'Member'}</div></div>
               </a>
             </div>
@@ -4250,7 +4249,7 @@
               ${orDivider}${googleBtn}
               <p style="text-align:center">${t("noAccount")} <a href="#/signup" style="color:var(--blue-2)">${t("signUpLink")}</a></p>
              </form>`;
-        const brandSection = `<section class="auth-brand"><img src="/assets/rectoboost-logo.png" alt="RectoBoost" /><h1>Manage Social Growth<br><span style="color:var(--blue-2)">Faster.</span> <span style="color:var(--orange)">Cleaner.</span> Smarter.</h1><p>One dashboard to order services, monitor progress, manage balance, and keep every campaign organized.</p><div class="auth-features">${[["Fast Ordering","Create and track orders from one simple flow",icon.order],["Service Catalog","Find social media services with clear pricing",icon.services],["Live Progress","Check order status and updates anytime",icon.reports],["Support Ready","Open tickets when you need help",icon.ticket]].map(x=>`<div class="auth-feature"><span class="circle-icon">${svg(x[2])}</span><div><strong>${x[0]}</strong><br><span>${x[1]}</span></div></div>`).join("")}</div><div class="auth-platforms">${["instagram","youtube","tiktok","telegram","spotify"].map(x=>`<div class="auth-platform-card">${brand(x)}</div>`).join("")}</div></section>`;
+        const brandSection = `<section class="auth-brand"><img src="assets/rectoboost-logo.png" alt="RectoBoost" /><h1>Manage Social Growth<br><span style="color:var(--blue-2)">Faster.</span> <span style="color:var(--orange)">Cleaner.</span> Smarter.</h1><p>One dashboard to order services, monitor progress, manage balance, and keep every campaign organized.</p><div class="auth-features">${[["Fast Ordering","Create and track orders from one simple flow",icon.order],["Service Catalog","Find social media services with clear pricing",icon.services],["Live Progress","Check order status and updates anytime",icon.reports],["Support Ready","Open tickets when you need help",icon.ticket]].map(x=>`<div class="auth-feature"><span class="circle-icon">${svg(x[2])}</span><div><strong>${x[0]}</strong><br><span>${x[1]}</span></div></div>`).join("")}</div><div class="auth-platforms">${["instagram","youtube","tiktok","telegram","spotify"].map(x=>`<div class="auth-platform-card">${brand(x)}</div>`).join("")}</div></section>`;
 
         let cardContent;
         if (sent) {
@@ -4275,7 +4274,7 @@
         }
 
         // Mobile logo shown inside card (brand section hidden on mobile)
-        const mobileLogo = `<div class="mobile-auth-logo"><img src="/assets/rectoboost-logo.png" alt="RectoBoost" /></div>`;
+        const mobileLogo = `<div class="mobile-auth-logo"><img src="assets/rectoboost-logo.png" alt="RectoBoost" /></div>`;
         const legalFooter = `<div style="text-align:center;margin-top:24px;font-size:12px;color:var(--muted)">
           <a href="#/terms" style="color:var(--muted)">Syarat &amp; Ketentuan</a> &middot;
           <a href="#/privacy" style="color:var(--muted)">Privasi</a> &middot;
@@ -4292,7 +4291,7 @@
         const nav = isLoggedIn ? layout : (c) => `
           <div style="min-height:100vh;background:var(--bg)">
             <header style="display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--line);background:var(--panel)">
-              <a href="#/dashboard"><img src="/assets/rectoboost-logo.png" alt="RectoBoost" style="height:34px" /></a>
+              <a href="#/dashboard"><img src="assets/rectoboost-logo.png" alt="RectoBoost" style="height:34px" /></a>
               <a class="btn ghost" href="#/login" style="font-size:13px">Login</a>
             </header>
             ${c}
