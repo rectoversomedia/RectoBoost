@@ -2606,21 +2606,20 @@
         return COUNTRY_DISPLAY[country] || country;
       }
 
-      // Build unique country list from ALL services (reset when services change)
+      // Build unique country list from ALL services (precomputed)
       let _allCountries = null;
-      let _allCountriesSvcLen = 0;
       function getAllCountries() {
-        if (!_allCountries || services.length !== _allCountriesSvcLen) {
+        if (!_allCountries || (_allCountries.length === 0 && services.length > 0)) {
           const seen = new Set();
           for (const s of services) {
             const c = extractCountry(s[1]);
             if (c) seen.add(c);
           }
           _allCountries = Array.from(seen).sort();
-          _allCountriesSvcLen = services.length;
         }
         return _allCountries;
       }
+      function clearCountryCache() { _allCountries = null; }
 
       function countryMatch(s) {
         const filter = state.countryFilter;
@@ -2777,6 +2776,7 @@
           const list = Array.isArray(serviceList) ? serviceList : (serviceList.services || []);
           if (list.length) {
             services.splice(0, services.length, ...list.map(mapProviderService));
+            clearCountryCache();
             selectService(0);
           }
 
