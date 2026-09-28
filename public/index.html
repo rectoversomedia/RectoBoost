@@ -2324,8 +2324,71 @@
         traffic: "Supports geo-targeted visitor campaigns and web traffic growth.",
         google: "Improves Google Maps review signals and local business visibility.",
       };
-      function serviceDescription(platform) {
-        return PLATFORM_DESCRIPTIONS[platform] || "Supports growth and visibility for your digital presence and campaigns.";
+      function getServiceDesc(name, platform) {
+        const n = (name || "").toLowerCase();
+        const p = platform || "";
+        // Extract service type
+        let type = "Service";
+        if (n.includes("follower")) type = "Followers";
+        else if (n.includes("like")) type = "Likes";
+        else if (n.includes("view") || n.includes("play") || n.includes("stream")) type = "Views / Plays";
+        else if (n.includes("subscriber")) type = "Subscribers";
+        else if (n.includes("comment")) type = "Comments";
+        else if (n.includes("share")) type = "Shares";
+        else if (n.includes("member")) type = "Members";
+        else if (n.includes("review")) type = "Reviews";
+        else if (n.includes("download")) type = "Downloads";
+        else if (n.includes("reaction")) type = "Reactions";
+        else if (n.includes("listener")) type = "Listeners";
+        else if (n.includes("watch") && n.includes("hour")) type = "Watch Hours";
+        else if (n.includes("mention")) type = "Mentions";
+        else if (n.includes("engagement")) type = "Engagement";
+
+        // Extract quality/tier
+        let tier = "";
+        if (n.includes("premium") || n.includes("high quality") || n.includes("(Best)")) tier = "Premium ";
+        else if (n.includes("( HQ )")) tier = "High Quality ";
+        else if (n.includes("low cost") || n.includes("budget")) tier = "Budget ";
+        else if (n.includes("random")) tier = "Random ";
+        else if (n.includes("female")) tier = "Female ";
+        else if (n.includes("male")) tier = "Male ";
+
+        // Extract country
+        let country = "";
+        const countryKw = {
+          "indonesia":"Indonesia","indo":"Indonesia","brazil":"Brazil","usa":"USA",
+          "united states":"USA","uk":"United Kingdom","germany":"Germany","france":"France",
+          "spain":"Spain","italy":"Italy","japan":"Japan","korea":"Korea","india":"India",
+          "china":"China","russia":"Russia","vietnam":"Vietnam","thailand":"Thailand",
+          "turkey":"Turkey","mexico":"Mexico","pakistan":"Pakistan","bangladesh":"Bangladesh",
+          "philippines":"Philippines","malaysia":"Malaysia","egypt":"Egypt","nigeria":"Nigeria",
+          "australia":"Australia","canada":"Canada","netherlands":"Netherlands","europe":"Europe",
+          "latin":"Latin America","global":"Global","worldwide":"Global","arab":"Arab",
+          "european":"Europe","european union":"Europe"
+        };
+        for (const [kw, label] of Object.entries(countryKw)) {
+          if (n.includes(kw)) { country = ` for ${label}`; break; }
+        }
+
+        // Platform label
+        let platformLabel = p.charAt(0).toUpperCase() + p.slice(1);
+        if (p === "spotify") platformLabel = "Spotify";
+        else if (p === "youtube") platformLabel = "YouTube";
+        else if (p === "tiktok") platformLabel = "TikTok";
+        else if (p === "applemusic") platformLabel = "Apple Music";
+        else if (p === "soundcloud") platformLabel = "SoundCloud";
+        else if (p === "deezer") platformLabel = "Deezer";
+        else if (p === "twitch") platformLabel = "Twitch";
+        else if (p === "audiomack") platformLabel = "Audiomack";
+
+        // Refill hint
+        let extra = "";
+        if (n.includes("lifetime") || n.includes("refill") && n.includes("30")) extra = ". Lifetime refill available.";
+        else if (n.includes("refill") && n.includes("30")) extra = ". 30-day refill guarantee.";
+        else if (n.includes("refill") && n.includes("60")) extra = ". 60-day refill guarantee.";
+        else if (n.includes("drip")) extra = ". Drip-feed available.";
+
+        return `${tier}${type} for ${platformLabel}${country}. Fast delivery.${extra}`;
       }
 
       const FRIENDLY_CATEGORIES = {
@@ -3200,7 +3263,7 @@
       function serviceRow(s, index, selected = false) {
         const pricePerK = (s[6] * 1000).toLocaleString("id-ID");
         const cleanName = cleanServiceName(s[1], s[0]);
-        const desc = serviceDescription(s[0]);
+        const desc = getServiceDesc(s[1], s[0]);
         const badge = serviceBadge(s);
         const isRefill = s[5] === "Refill" || (s[5] || "").includes("Days");
         return `<div class="service-row ${selected ? "selected" : ""}" style="cursor:pointer" data-service-index="${index}">
@@ -3387,8 +3450,17 @@
       }
 
       function success() {
-        state.balance = 2470500;
-        return layout(`<section class="view shell">${pageHead("Payment Successful")}<div class="two-col"><div class="grid"><article class="card section" style="text-align:center;padding:42px">${svg(icon.check, "circle-icon")}<h1>Thank You!<br><span style="color:var(--blue-2)">Payment Successful</span></h1><p>Your order has been placed and is now being processed. You will be notified once your order is completed.</p><div class="info-grid"><div class="info-tile">Order ID<br><strong>RB2505180001</strong></div>${state.liveOrderId ? `<div class="info-tile">SMMWIZ Order ID<br><strong>${state.liveOrderId}</strong></div>` : ""}<div class="info-tile">Payment ID<br><strong>PAY250518A7B2</strong></div><div class="info-tile">Transaction Time<br><strong>18 May 2026, 14:32 WIB</strong></div><div class="info-tile">Payment Method<br><strong>Balance</strong></div></div></article><article class="card section"><h2>Order Progress</h2><div class="timeline"><div class="timeline-item"><span class="circle-icon">${svg(icon.check)}</span><strong>Order Placed<br><span class="muted">18 May 2026, 14:32</span></strong><span>Your order has been placed successfully.</span></div><div class="timeline-item"><span class="circle-icon">2</span><strong>Processing<br><span class="muted">Just now</span></strong><span>Your system is preparing the order right now.</span></div></div></article><div class="card bottom-bar"><a class="btn" href="#/orders">${svg(icon.list)}View Orders</a><a class="btn" href="#/new-order">${svg(icon.order)}Create New Order</a><span></span><a class="btn primary" href="#/dashboard">Back to Dashboard</a></div></div><div class="grid">${orderSummary()}<aside class="card section"><h2>What's Next?</h2><p>You will be notified once the order starts. You can check real-time status in the Orders section.</p></aside></div></div></section>`);
+        const payment = state.pendingPayment || {};
+        const now = new Date();
+        const timeStr = `${now.toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})} ${now.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})} WIB`;
+        const orderId = payment.publicId || state.liveOrderId || "—";
+        const payId = payment.id || "—";
+        const method = payment.method || "Balance";
+        const created = payment.createdAt
+          ? new Date(payment.createdAt).toLocaleString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) + " WIB"
+          : timeStr;
+        const totalPaid = payment.amount ? `IDR ${Number(payment.amount).toLocaleString("id-ID")}` : "—";
+        return layout(`<section class="view shell">${pageHead("Payment Successful")}<div class="two-col"><div class="grid"><article class="card section" style="text-align:center;padding:42px">${svg(icon.check, "circle-icon")}<h1>Thank You!<br><span style="color:var(--blue-2)">Payment Successful</span></h1><p>Your order has been placed and is now being processed. You will be notified once your order is completed.</p><div class="info-grid"><div class="info-tile">Order ID<br><strong>${orderId}</strong></div>${state.liveOrderId ? `<div class="info-tile">SMMWIZ Order ID<br><strong>${state.liveOrderId}</strong></div>` : ""}<div class="info-tile">Payment ID<br><strong>${payId.slice(0,12)}...</strong></div><div class="info-tile">Transaction Time<br><strong>${created}</strong></div><div class="info-tile">Payment Method<br><strong>${method}</strong></div></div></article><div class="card bottom-bar"><a class="btn" href="#/orders">${svg(icon.list)}View Orders</a><a class="btn" href="#/new-order">${svg(icon.order)}Create New Order</a><span></span><a class="btn primary" href="#/dashboard">Back to Dashboard</a></div></div><div class="grid">${orderSummary()}<aside class="card section"><h2>What's Next?</h2><p>You will be notified once the order starts. You can check real-time status in the Orders section.</p></aside></div></div></section>`);
       }
 
       function ordersPage(detail = false) {
@@ -3456,8 +3528,25 @@
       }
 
       function orderDetailsPage() {
-        const service = selectedServiceData();
-        return layout(`<section class="view shell order-detail-page">${pageHead("Order Details", `<a class="btn ghost" href="#/orders">${svg(icon.back)}Back to Orders</a>`)}<div class="two-col"><div class="grid">${state.statusRefreshed ? `<div class="notice">${svg(icon.check)} Status refreshed just now.</div>` : ""}<article class="card section"><div style="display:flex;align-items:center;gap:14px">${brand(service[0], "platform")}<div><span class="status processing">Processing</span><h2>${state.selectedService}</h2><span class="tag">ID: RB2505180000</span></div></div><div class="info-grid" style="margin-top:18px"><div>Quantity<br><strong>250</strong></div><div>Charge<br><strong>IDR 9.750</strong></div><div>Start Count<br><strong>0</strong></div><div>Remaining<br><strong>250</strong></div></div></article><article class="card section"><h2>Progress</h2><div style="display:flex;align-items:center;gap:12px"><strong style="font-size:18px;color:var(--blue-2)">0%</strong><input type="range" value="0" /></div><p>${svg(icon.info)} Your order is being processed. This may take some time.</p></article><article class="card section"><h2>Order Timeline</h2><div class="timeline"><div class="timeline-item"><span class="circle-icon">${svg(icon.order)}</span><strong>Order Placed<br><span class="muted">18 May 2026, 14:28</span></strong><span>Your order has been placed successfully.</span></div><div class="timeline-item"><span class="circle-icon">${svg(icon.settings)}</span><strong>Processing<br><span class="muted">18 May 2026, 14:28</span></strong><span>Your order is now being processed.</span></div><div class="timeline-item"><span class="circle-icon">3</span><strong>In Progress</strong><span>We are delivering your order to the link.</span></div><div class="timeline-item"><span class="circle-icon">4</span><strong>Completed</strong><span>Your order has been completed.</span></div></div></article><article class="card section"><h2>Service Details</h2><div class="info-grid"><div>Category<br><strong>${categoryLabel(service[0])}</strong></div><div>Type<br><strong>${service[3] || "Standard"}</strong></div><div>Speed<br><strong>${service[4]}</strong></div><div>Refill<br><strong>${service[5]}</strong></div></div></article></div><div class="grid"><aside class="card section"><div class="summary-row"><span>Order Date</span><strong>18 May 2026, 14:28</strong></div><div class="summary-row"><span>Link</span><a style="color:var(--blue-2)">instagram.com/username</a></div><div class="summary-row"><span>Total Price</span><span class="total">IDR 9.750</span></div></aside><aside class="card section"><h2>Status</h2><div class="summary-row"><span>Status</span><span class="status processing">Processing</span></div><div class="summary-row"><span>Processed</span><strong>0</strong></div><div class="summary-row"><span>Remaining</span><strong>250</strong></div><button class="btn ghost" data-refresh-status>Refresh Status</button></aside><aside class="card section"><h2>Need Help?</h2><p>Having issue with your order? Our support team is available 24/7.</p><a class="btn ghost block" href="#/tickets/create">Create Ticket ${svg(icon.arrow)}</a></aside><aside class="card section refill-card"><h2>${svg(icon.shield)} Eligible for Refill <span class="pill">${service[5]}</span></h2><p>If you don't receive the expected results, you can request a refill.</p><a class="btn ghost block" href="#/tickets/create">Request Refill ${svg(icon.arrow)}</a></aside></div></div></section>`);
+        const order = state.selectedOrder;
+        if (!order) {
+          return layout(`<section class="view shell">${pageHead("Order Details", `<a class="btn ghost" href="#/orders">${svg(icon.back)}Back to Orders</a>`)}<div class="two-col"><div class="grid"><article class="card section" style="text-align:center;padding:60px"><h2>No Order Selected</h2><p class="muted">Select an order from the Orders page to view details.</p><a class="btn primary" href="#/orders">${svg(icon.list)}View All Orders</a></article></div></div></section>`);
+        }
+        const o = order;
+        const statusColor = {PENDING:"pending",PROCESSING:"processing",COMPLETED:"completed",CANCELED:"canceled",FAILED:"canceled",PARTIAL:"warning",IN_PROGRESS:"processing"}[o.status] || "pending";
+        const dateStr = o.createdAt ? new Date(o.createdAt).toLocaleString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+        const startCount = o.startCount ?? "—";
+        const remains = o.remains ?? "—";
+        const charge = o.charge ? `IDR ${Number(o.charge).toLocaleString("id-ID")}` : "—";
+        const qty = o.quantity ? o.quantity.toLocaleString("id-ID") : "—";
+        const pct = (o.charge && o.quantity && o.startCount !== undefined)
+          ? Math.min(100, Math.round((Number(o.startCount) / Number(o.quantity)) * 100))
+          : 0;
+        const platformKey = detectPlatformFromName(o.serviceName || "") || "other";
+        const serviceRow = services.find(s => String(s[8]) === String(o.providerServiceId));
+        const sName = serviceRow ? serviceRow[1] : (o.serviceName || "—");
+        const sDesc = serviceRow ? getServiceDesc(serviceRow[1], serviceRow[0]) : "";
+        return layout(`<section class="view shell order-detail-page">${pageHead("Order Details", `<a class="btn ghost" href="#/orders">${svg(icon.back)}Back to Orders</a>`)}<div class="two-col"><div class="grid">${state.statusRefreshed ? `<div class="notice">${svg(icon.check)} Status refreshed just now.</div>` : ""}<article class="card section"><div style="display:flex;align-items:center;gap:14px">${brand(platformKey, "platform")}<div><span class="status ${statusColor}">${o.status}</span><h2>${sName}</h2><span class="tag">ID: ${o.publicId}</span></div></div><div class="info-grid" style="margin-top:18px"><div>Quantity<br><strong>${qty}</strong></div><div>Charge<br><strong>${charge}</strong></div><div>Start Count<br><strong>${startCount}</strong></div><div>Remaining<br><strong>${remains}</strong></div></div></article><article class="card section"><h2>Progress</h2><div style="display:flex;align-items:center;gap:12px"><strong style="font-size:18px;color:var(--blue-2)">${pct}%</strong><input type="range" value="${pct}" style="flex:1" disabled /></div><p>${svg(icon.info)} Order status: ${o.status}. ${o.rawStatus || ""}</p></article><article class="card section"><h2>Service Details</h2><p class="muted" style="font-size:13px;margin-bottom:10px">${sDesc}</p><div class="info-grid"><div>Category<br><strong>${categoryLabel(platformKey)}</strong></div><div>Provider<br><strong>${(o.provider || "smmwiz").toUpperCase()}</strong></div></div></article></div><div class="grid"><aside class="card section"><div class="summary-row"><span>Order Date</span><strong>${dateStr}</strong></div><div class="summary-row"><span>Link</span><a style="color:var(--blue-2)" href="${o.link}" target="_blank">${o.link ? o.link.slice(0,30) + (o.link.length > 30 ? "..." : "") : "—"}</a></div><div class="summary-row"><span>Total Price</span><span class="total">${charge}</span></div></aside><aside class="card section"><h2>Status</h2><div class="summary-row"><span>Status</span><span class="status ${statusColor}">${o.status}</span></div><div class="summary-row"><span>Processed</span><strong>${startCount}</strong></div><div class="summary-row"><span>Remaining</span><strong>${remains}</strong></div><button class="btn ghost" data-refresh-status>Refresh Status</button></aside><aside class="card section"><h2>Need Help?</h2><p>Having issue with your order? Our support team is available 24/7.</p><a class="btn ghost block" href="#/tickets/create">Create Ticket ${svg(icon.arrow)}</a></aside></div></div></section>`);
       }
 
       function paginationBar(current, total, dataAttr = "data-svc-page") {
@@ -3530,7 +3619,7 @@
           const cards = featured.length
             ? featured.map(({ s, i }) => {
                 const displayName = cleanServiceName(s[1], s[0]);
-                const desc = serviceDescription(s[0]);
+                const desc = getServiceDesc(s[1], s[0]);
                 const cat = friendlyCategory(s[0]);
                 return `
                   <div class="featured-card">
@@ -3741,7 +3830,7 @@
               <div class="featured-grid">
                 ${items.map(({ s, i }) => {
                   const displayName = cleanServiceName(s[1], s[0]);
-                  const desc = serviceDescription(s[0]);
+                  const desc = getServiceDesc(s[1], s[0]);
                   return `
                     <div class="featured-card">
                       <div class="featured-card-head">
@@ -4056,17 +4145,37 @@
       function ticketsPage(sub = "") {
         if (sub === "create") return createTicket();
         if (sub) return ticketDetails();
-        return layout(`<section class="view shell">${pageHead("Tickets", `<a class="btn primary" href="#/tickets/create">${svg(icon.plus)}Create New Ticket</a>`)}<div class="grid"><div class="stat-cards">${[["All Tickets","12",icon.ticket],["Open","5",icon.check],["In Progress","4",icon.clock],["Resolved","3",icon.shield],["Closed","0",icon.list]].map(x=>`<article class="card mini-stat ticket-stat"><span class="circle-icon">${svg(x[2])}</span><div><span class="muted">${x[0]}</span><strong style="display:block;margin-top:8px;font-size:26px">${x[1]}</strong></div></article>`).join("")}</div><div class="two-col"><article class="card table-card"><div class="table-tools"><input class="field" placeholder="Search by subject, ticket ID..." /><button class="select" data-filter-note="Tickets filtered by status">All Status</button><button class="select" data-filter-note="Tickets filtered by category">All Categories</button></div><table><thead><tr><th>Ticket</th><th>Subject</th><th>Category</th><th>Status</th><th>Last Update</th><th>Action</th></tr></thead><tbody>${tickets.map(t=>`<tr><td><strong>${t[0]}</strong><br><span class="muted">${t[4]}</span></td><td>${t[1]}<br><span class="muted">Order ID: RB2505180000</span></td><td>${t[2] === "funds" || t[2] === "services" ? `<span class="tag">${t[2]}</span>` : brand(t[2], "service-icon platform")}</td><td><span class="status ${statusClass(t[3])}">${t[3]}</span></td><td>${t[4]}</td><td><a class="btn small ghost" href="#/tickets/${t[0].replace("#","")}">${svg(icon.eye)}View</a></td></tr>`).join("")}</tbody></table><div class="table-foot"><span>Showing 1 to 5 of 12 tickets</span><div class="pages"><button class="page-btn active" data-filter-note="Tickets page 1 selected">1</button><button class="page-btn" data-filter-note="Tickets page 2 selected">2</button><button class="page-btn" data-filter-note="Tickets page 3 selected">3</button></div></div></article><aside class="grid"><div class="card section"><h2>Need Help?</h2><p>Can't find the answer you're looking for? Our support team is available 24/7.</p><a class="btn primary block" href="#/tickets/create">Create New Ticket</a></div><div class="card section"><h2>Quick Tips</h2><p>Provide your Order ID, describe your issue clearly, and attach screenshots when possible.</p></div></aside></div></div></section>`);
+        const tkts = state.liveTickets || [];
+        const all = tkts.length;
+        const open = tkts.filter(t => ["OPEN","PENDING"].includes(t.status)).length;
+        const progress = tkts.filter(t => t.status === "IN_PROGRESS").length;
+        const resolved = tkts.filter(t => ["RESOLVED","CLOSED"].includes(t.status)).length;
+        const stats = [["All Tickets",all,icon.ticket],["Open",open,icon.check],["In Progress",progress,icon.clock],["Resolved",resolved,icon.shield],["Closed",0,icon.list]];
+        const tktRows = tkts.map(t => {
+          const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleString("id-ID",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+          const cat = t.category || t.orderCategory || "services";
+          return `<tr><td><strong>${attr(t.publicId || t.id)}</strong><br><span class="muted">${dateStr}</span></td><td>${attr(t.subject || "—")}<br><span class="muted">${t.orderId ? "Order: "+attr(t.orderId) : ""}</span></td><td>${cat === "funds" || cat === "services" ? `<span class="tag">${cat}</span>` : brand(cat, "service-icon platform")}</td><td><span class="status ${t.status === "OPEN" ? "pending" : t.status === "RESOLVED" ? "completed" : t.status === "IN_PROGRESS" ? "processing" : "muted"}">${t.status || "—"}</span></td><td>${dateStr}</td><td><a class="btn small ghost" href="#/tickets/${(t.publicId || t.id).replace("#","")}">${svg(icon.eye)}View</a></td></tr>`;
+        }).join("");
+        const pageCount = Math.max(1, Math.ceil(all / 10));
+        const pageBtns = Array.from({length: pageCount}, (_,i) => `<button class="page-btn${i===0?" active":""}" data-filter-note="Tickets page ${i+1} selected">${i+1}</button>`).join("");
+        return layout(`<section class="view shell">${pageHead("Tickets", `<a class="btn primary" href="#/tickets/create">${svg(icon.plus)}Create New Ticket</a>`)}<div class="grid">${all > 0 ? `<div class="stat-cards">${stats.map(x=>`<article class="card mini-stat ticket-stat"><span class="circle-icon">${svg(x[2])}</span><div><span class="muted">${x[0]}</span><strong style="display:block;margin-top:8px;font-size:26px">${x[1]}</strong></div></article>`).join("")}</div>` : ""}<div class="two-col"><article class="card table-card"><div class="table-tools"><input class="field" placeholder="Search by subject, ticket ID..." /><button class="select" data-filter-note="Tickets filtered by status">All Status</button><button class="select" data-filter-note="Tickets filtered by category">All Categories</button></div>${all > 0 ? `<table><thead><tr><th>Ticket</th><th>Subject</th><th>Category</th><th>Status</th><th>Last Update</th><th>Action</th></tr></thead><tbody>${tktRows}</tbody></table><div class="table-foot"><span>Showing 1 to ${Math.min(10,all)} of ${all} tickets</span><div class="pages">${pageBtns}</div></div>` : `<div style="text-align:center;padding:60px"><h2>No Tickets Yet</h2><p class="muted">You haven't created any support tickets yet.</p><a class="btn primary" href="#/tickets/create" style="margin-top:16px">Create Your First Ticket</a></div>`}</article><aside class="grid"><div class="card section"><h2>Need Help?</h2><p>Can't find the answer you're looking for? Our support team is available 24/7.</p><a class="btn primary block" href="#/tickets/create">Create New Ticket</a></div><div class="card section"><h2>Quick Tips</h2><p>Provide your Order ID, describe your issue clearly, and attach screenshots when possible.</p></div></aside></div></div></section>`);
       }
 
       function ticketDetails() {
-        const messages = ["Hi, my Instagram followers order hasn't delivered even though it's been more than 2 hours. Please check.","Hi Fajar, thanks for reaching out. We checked your order and there is a temporary delay. We'll keep monitoring it for you.","Got it, thanks! I'll wait."];
-        if (state.ticketReplied) messages.push("Additional note sent. Please update me when there is progress.");
-        return layout(`<section class="view shell">${pageHead("Ticket Details", `<a class="btn ghost" href="#/tickets">${svg(icon.back)}Back to Tickets</a>`)}<div class="two-col"><div class="grid"><article class="card section"><div style="display:flex;align-items:center;gap:16px">${brand("instagram", "platform")}<div><span class="muted">Instagram Followers order</span><h2>not delivering</h2><span class="tag">Ticket ID: #TCK-20260518-0012</span></div></div></article><article class="card section"><h2>Conversation</h2>${messages.map((m,i)=>`<div class="detail-row"><strong>${i===1?"RectoBoost Support":"Fajar Pahlawan"}</strong><span>${m}</span></div>`).join("")}<textarea class="textarea" placeholder="Type your reply here..."></textarea>${state.ticketReplied ? `<div class="notice" style="margin-top:12px">${svg(icon.check)} Reply sent to support.</div>` : ""}<div style="text-align:right;margin-top:12px"><button class="btn primary" data-send-reply>Send Reply</button></div></article></div><div class="grid"><aside class="card section"><h2>Status Tracker</h2><div class="timeline"><div class="timeline-item"><span class="circle-icon">${svg(icon.check)}</span><strong>Open</strong><span>Ticket has been created</span></div><div class="timeline-item"><span class="circle-icon">2</span><strong>In Progress</strong><span>Our team is working on this issue</span></div><div class="timeline-item"><span class="circle-icon">3</span><strong>Resolved</strong><span>Waiting for your confirmation</span></div></div></aside><aside class="card section"><h2>Related Order</h2>${orderRow(orders[1])}</aside></div></div></section>`);
+        const tkts = state.liveTickets || [];
+        const tkt = tkts.find(t => String((t.publicId||t.id).replace("#","")) === String(state.selectedTicket));
+        if (!tkt) {
+          return layout(`<section class="view shell">${pageHead("Ticket Details", `<a class="btn ghost" href="#/tickets">${svg(icon.back)}Back to Tickets</a>`)}<div class="two-col"><div class="grid"><article class="card section" style="text-align:center;padding:60px"><h2>Ticket Not Found</h2><p class="muted">This ticket doesn't exist or you don't have access to it.</p><a class="btn primary" href="#/tickets">${svg(icon.list)}Back to Tickets</a></article></div></div></section>`);
+        }
+        const msgs = tkt.messages || [];
+        const relatedOrder = state.liveOrders?.find(o => String(o.publicId) === String(tkt.orderId));
+        const statusClass = tkt.status === "OPEN" ? "pending" : tkt.status === "RESOLVED" ? "completed" : tkt.status === "IN_PROGRESS" ? "processing" : "muted";
+        return layout(`<section class="view shell">${pageHead("Ticket Details", `<a class="btn ghost" href="#/tickets">${svg(icon.back)}Back to Tickets</a>`)}<div class="two-col"><div class="grid"><article class="card section"><div style="display:flex;align-items:center;gap:16px">${brand(tkt.category || "other", "platform")}<div><span class="muted">${categoryLabel(tkt.category || "services")}</span><h2>${attr(tkt.subject || "—")}</h2><span class="tag">Ticket ID: ${attr(tkt.publicId || tkt.id)}</span></div></div></article><article class="card section"><h2>Conversation</h2>${msgs.length > 0 ? msgs.map((m,i)=>`<div class="detail-row"><strong>${m.isAdmin ? "RectoBoost Support" : (state.user?.name || "You")}</strong><span>${attr(m.text || "")}</span></div>`).join("") : `<p class="muted" style="padding:20px;text-align:center">No messages yet. Add a reply below.</p>`}<textarea class="textarea" placeholder="Type your reply here..."></textarea>${state.ticketReplied ? `<div class="notice" style="margin-top:12px">${svg(icon.check)} Reply sent to support.</div>` : ""}<div style="text-align:right;margin-top:12px"><button class="btn primary" data-send-reply>Send Reply</button></div></article></div><div class="grid"><aside class="card section"><h2>Status Tracker</h2><div class="timeline"><div class="timeline-item"><span class="circle-icon">${svg(icon.check)}</span><strong>Open</strong><span>Ticket has been created</span></div><div class="timeline-item"><span class="circle-icon">2</span><strong>In Progress</strong><span>Our team is working on this issue</span></div><div class="timeline-item"><span class="circle-icon">3</span><strong>Resolved</strong><span>Waiting for your confirmation</span></div></div></aside>${relatedOrder ? `<aside class="card section"><h2>Related Order</h2>${orderRow(relatedOrder)}</aside>` : ""}</div></div></section>`);
       }
 
       function createTicket() {
-        return layout(`<section class="view shell">${pageHead("Create New Ticket")}<div class="two-col"><article class="card section"><h2>1. Ticket Information</h2><div class="form-grid"><div class="field-group"><label>Category *</label><select class="field"><option>Select a category</option><option>Order Issue</option><option>Payment</option></select></div><div class="field-group"><label>Priority *</label><select class="field"><option>Medium</option><option>Low</option><option>High</option></select></div></div><div class="field-group" style="margin-top:18px"><label>Subject *</label><input class="field" placeholder="Enter a brief subject for your issue" /></div><div class="field-group" style="margin-top:18px"><label>Related To</label><select class="field"><option>Select order (optional)</option><option>RB2505180000</option></select></div><div class="field-group" style="margin-top:18px"><label>Description *</label><textarea class="textarea" placeholder="Describe your issue in detail..."></textarea></div><div style="display:flex;justify-content:space-between;margin-top:22px"><a class="btn" href="#/tickets">Cancel</a><a class="btn primary" href="#/tickets/TCK-20260518-0012">Submit Ticket</a></div></article><aside class="grid"><div class="card section"><h2>Before You Submit</h2><p>Please check our FAQ articles first. You might find a quick answer without waiting.</p><a class="btn ghost" href="#/faq">View FAQ</a></div><div class="card section"><h2>Quick Tips</h2><p>Provide your Order ID, describe your issue in detail, and attach screenshots if possible.</p></div></aside></div></section>`);
+        const orderOpts = (state.liveOrders || []).map(o => `<option value="${attr(o.publicId || o.id)}">${attr(o.publicId || o.id)} — ${attr(o.serviceName || o.name || "Order").slice(0,40)}</option>`).join("");
+        return layout(`<section class="view shell">${pageHead("Create New Ticket")}<div class="two-col"><article class="card section"><h2>1. Ticket Information</h2><div class="form-grid"><div class="field-group"><label>Category *</label><select class="field" data-ticket-category><option value="">Select a category</option><option>Order Issue</option><option>Payment</option><option>Account</option><option>Refund</option><option>Other</option></select></div><div class="field-group"><label>Priority *</label><select class="field" data-ticket-priority><option>Medium</option><option>Low</option><option>High</option></select></div></div><div class="field-group" style="margin-top:18px"><label>Subject *</label><input class="field" placeholder="Enter a brief subject for your issue" data-ticket-subject /></div><div class="field-group" style="margin-top:18px"><label>Related Order</label><select class="field" data-ticket-order>${orderOpts ? `<option value="">Select order (optional)</option>${orderOpts}` : `<option value="">No orders available</option>`}</select></div><div class="field-group" style="margin-top:18px"><label>Description *</label><textarea class="textarea" placeholder="Describe your issue in detail..." data-ticket-description></textarea></div><div style="display:flex;justify-content:space-between;margin-top:22px"><a class="btn" href="#/tickets">Cancel</a><button class="btn primary" data-submit-ticket>Submit Ticket</button></div></article><aside class="grid"><div class="card section"><h2>Before You Submit</h2><p>Please check our FAQ articles first. You might find a quick answer without waiting.</p><a class="btn ghost" href="#/faq">View FAQ</a></div><div class="card section"><h2>Quick Tips</h2><p>Provide your Order ID, describe your issue in detail, and attach screenshots if possible.</p></div></aside></div></div></section>`);
       }
 
       function reports() {
