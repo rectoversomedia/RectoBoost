@@ -2128,6 +2128,7 @@
           linkSent: "Link Sent!", linkSentDesc: "If your email is registered, a reset link has been sent. Check your inbox (and spam folder).",
           // Services
           searchServices: "Search services...", allCategories: "All Categories",
+          allCountries: "All Countries", otherCountries: "Other (no country)",
           minOrder: "Min", maxOrder: "Max", pricePerK: "Price / 1K",
           selectService: "Select a service to continue",
           // Orders
@@ -2168,6 +2169,7 @@
           linkSent: "Link Terkirim!", linkSentDesc: "Jika email terdaftar, link reset sudah dikirim. Cek inbox (dan folder spam) kamu.",
           // Services
           searchServices: "Cari layanan...", allCategories: "Semua Kategori",
+          allCountries: "Semua Negara", otherCountries: "Lainnya (tanpa negara)",
           minOrder: "Min", maxOrder: "Maks", pricePerK: "Harga / 1K",
           selectService: "Pilih layanan untuk melanjutkan",
           // Orders
@@ -2233,6 +2235,7 @@
         goalFilter: "all",
         speedFilter: "all",
         priceFilter: "all",
+        countryFilter: "all",
         refillFilter: false,
         newOrderSearch: "",
         newOrderSubCat: "",
@@ -2554,26 +2557,81 @@
       // Negative-service keywords (client-side mirror of server filter)
       const NEGATIVE_SVC_WORDS = ["dislike","hate","report abuse","ban","unsubscribe","mass unfollow","remove follower","negative review","spam","mass report","flag"];
 
-      // Country filter — only show Indonesia or unspecified-country services
-      const FOREIGN_COUNTRY_WORDS = [
-        "brazil","brazilian","brasil","usa","united states","american","uk","united kingdom","british",
-        "india","indian","hindi","china","chinese","russia","russian","japan","japanese","korea","korean",
-        "vietnam","vietnamese","thailand","thai","germany","german","france","french","spain","spanish",
-        "italy","italian","australia","australian","canada","canadian","mexico","mexican","turkey","turkish",
-        "egypt","egyptian","nigeria","nigerian","ghana","pakistan","pakistani","bangladesh","bangladeshi",
-        "philippines","filipino","taiwan","taiwanese","malaysia","malay","singapore","arab","saudi","uae",
-        "myanmar","cambodia","laos","sri lanka","nepal","iran","iraq","israel","czech","polish",
-        "dutch","sweden","swedish","norway","norwegian","denmark","danish","finland","finnish",
-        "portugal","portuguese","argentina","colombian","chilean","peruvian","latin",
-        " eu ", "european","global","worldwide","international"
-      ];
-      function isIndonesiaOrNoCountry(s) {
-        const name = (s[1] || "").toLowerCase();
-        if (name.includes("indonesia") || name.includes("indonesian") || name.includes(" indo ") || name.includes("[indo]") || name.includes("(indo)")) return true;
-        for (const c of FOREIGN_COUNTRY_WORDS) {
-          if (name.includes(c)) return false;
+      // Country extraction and mapping
+      const COUNTRY_KEYWORDS = {
+        "brazil":"Brazil","brasil":"Brazil","usa":"USA","united states":"USA","uk":"United Kingdom",
+        "united kingdom":"United Kingdom","india":"India","indian":"India","china":"China","chinese":"China",
+        "russia":"Russia","russian":"Russia","japan":"Japan","japanese":"Japan","korea":"Korea","korean":"Korea",
+        "vietnam":"Vietnam","thailand":"Thailand","germany":"Germany","german":"Germany",
+        "france":"France","french":"France","spain":"Spain","spanish":"Spain","italy":"Italy",
+        "australia":"Australia","australian":"Australia","canada":"Canada","mexico":"Mexico",
+        "turkey":"Turkey","egypt":"Egypt","nigeria":"Nigeria","ghana":"Ghana","pakistan":"Pakistan",
+        "bangladesh":"Bangladesh","philippines":"Philippines","filipino":"Philippines",
+        "taiwan":"Taiwan","malaysia":"Malaysia","singapore":"Singapore","arab":"Arab",
+        "saudi":"Saudi Arabia","uae":"UAE","indonesia":"Indonesia","indo":"Indonesia","indonesian":"Indonesia",
+        "global":"Global","worldwide":"Global","international":"International","european":"Europe",
+        "latin":"Latin","eu ":"Europe","europe":"Europe","dutch":"Netherlands","netherlands":"Netherlands",
+        "sweden":"Sweden","norway":"Norway","denmark":"Denmark","finland":"Finland","portugal":"Portugal",
+        "argentina":"Argentina","colombia":"Colombia","chile":"Chile","peru":"Peru","czech":"Czech",
+        "poland":"Poland","polish":"Poland","turkish":"Turkey","israel":"Israel","iran":"Iran",
+        "iraq":"Iraq","iraqi":"Iraq","myanmar":"Myanmar","cambodia":"Cambodia","laos":"Laos",
+        "sri lanka":"Sri Lanka","nepal":"Nepal","british":"United Kingdom","american":"USA",
+        "swiss":"Switzerland","switzerland":"Switzerland"
+      };
+      const COUNTRY_DISPLAY = {
+        "Global":"🌍 Global / Worldwide","USA":"🇺🇸 USA","United Kingdom":"🇬🇧 UK","India":"🇮🇳 India",
+        "China":"🇨🇳 China","Russia":"🇷🇺 Russia","Japan":"🇯🇵 Japan","Korea":"🇰🇷 Korea",
+        "Brazil":"🇧🇷 Brazil","Germany":"🇩🇪 Germany","France":"🇫🇷 France","Spain":"🇪🇸 Spain",
+        "Italy":"🇮🇹 Italy","Australia":"🇦🇺 Australia","Canada":"🇨🇦 Canada","Mexico":"🇲🇽 Mexico",
+        "Turkey":"🇹🇷 Turkey","Indonesia":"🇮🇩 Indonesia","Philippines":"🇵🇭 Philippines",
+        "Malaysia":"🇲🇾 Malaysia","Singapore":"🇸🇬 Singapore","Thailand":"🇹🇭 Thailand",
+        "Vietnam":"🇻🇳 Vietnam","Taiwan":"🇹🇼 Taiwan","Egypt":"🇪🇬 Egypt","Nigeria":"🇳🇬 Nigeria",
+        "Pakistan":"🇵🇰 Pakistan","Bangladesh":"🇧🇩 Bangladesh","UAE":"🇦🇪 UAE / Saudi",
+        "Saudi Arabia":"🇸🇦 Saudi Arabia","Arab":"🇸🇦 Arab","Latin":"🌎 Latin America",
+        "Europe":"🇪🇺 Europe","Netherlands":"🇳🇱 Netherlands","Sweden":"🇸🇪 Sweden",
+        "Norway":"🇳🇴 Norway","Denmark":"🇩🇰 Denmark","Finland":"🇫🇮 Finland",
+        "Portugal":"🇵🇹 Portugal","Argentina":"🇦🇷 Argentina","Colombia":"🇨🇴 Colombia",
+        "Chile":"🇨🇱 Chile","Peru":"🇵🇪 Peru","Czech":"🇨🇿 Czech","Poland":"🇵🇱 Poland",
+        "Israel":"🇮🇱 Israel","Iran":"🇮🇷 Iran","Iraq":"🇮🇶 Iraq","Myanmar":"🇲🇲 Myanmar",
+        "Cambodia":"🇰🇭 Cambodia","Laos":"🇱🇦 Laos","Sri Lanka":"🇱🇰 Sri Lanka",
+        "Nepal":"🇳🇵 Nepal","Switzerland":"🇨🇭 Switzerland","Netherlands":"🇳🇱 Netherlands"
+      };
+
+      function extractCountry(name) {
+        const n = (name || "").toLowerCase();
+        for (const [kw, country] of Object.entries(COUNTRY_KEYWORDS)) {
+          if (n.includes(kw)) return country;
         }
-        return true;
+        return null;
+      }
+
+      function getCountryDisplay(country) {
+        return COUNTRY_DISPLAY[country] || country;
+      }
+
+      // Build unique country list from all services (computed once)
+      let _allCountries = null;
+      function getAllCountries() {
+        if (_allCountries) return _allCountries;
+        const seen = new Set();
+        for (const s of services) {
+          const c = extractCountry(s[1]);
+          if (c) seen.add(c);
+        }
+        _allCountries = Array.from(seen).sort();
+        return _allCountries;
+      }
+
+      function countryMatch(s) {
+        const filter = state.countryFilter;
+        if (!filter || filter === "all") return true;
+        if (filter === "other") {
+          // Show services with NO country keyword
+          return !extractCountry(s[1]);
+        }
+        // Match specific country
+        const country = extractCountry(s[1]);
+        return country === filter;
       }
 
       function setServiceFilter(category = "all", search = "") {
@@ -2588,7 +2646,7 @@
           .filter(({ s }) => state.serviceCategory === "all" || s[0] === state.serviceCategory)
           .filter(({ s }) => !search || `${s[0]} ${s[1]} ${s[2]}`.toLowerCase().includes(search))
           .filter(({ s }) => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
-          .filter(({ s }) => isIndonesiaOrNoCountry(s));
+          .filter(({ s }) => countryMatch(s));
       }
 
       function getServiceSubCat(s) {
@@ -2615,7 +2673,7 @@
           .filter(({ s }) => !subCat || getServiceSubCat(s) === subCat)
           .filter(({ s }) => !search || `${s[0]} ${s[1]} ${s[2]}`.toLowerCase().includes(search))
           .filter(({ s }) => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
-          .filter(({ s }) => isIndonesiaOrNoCountry(s));
+          .filter(({ s }) => countryMatch(s));
       }
       function bonusRate(amount = state.topupAmount) {
         if (amount >= 2000000) return 7;
@@ -2989,7 +3047,7 @@
                 const top10 = services
                   .map((s, i) => ({ s, i }))
                   .filter(({ s }) => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
-                  .filter(({ s }) => isIndonesiaOrNoCountry(s))
+                  .filter(({ s }) => countryMatch(s))
                   .sort((a, b) => {
                     const aRef = (a.s[5] === "Refill" || (a.s[5]||"").includes("Days")) ? 0 : 1;
                     const bRef = (b.s[5] === "Refill" || (b.s[5]||"").includes("Days")) ? 0 : 1;
@@ -3083,7 +3141,7 @@
         const platformSvcs = services
           .filter(s => (state.selectedCategory === "all" || s[0] === state.selectedCategory)
             && !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w))
-            && isIndonesiaOrNoCountry(s));
+            && countryMatch(s));
         const subCats = [...new Set(platformSvcs.map(s => getServiceSubCat(s)))].sort();
 
         const allFiltered = newOrderServices();
@@ -3110,6 +3168,14 @@
                 ${subCats.map(c => `<option value="${c}" ${state.newOrderSubCat === c ? "selected" : ""}>${c}</option>`).join("")}
               </select>
             </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">Negara</label>
+              <select class="select" data-new-order-country style="width:100%;min-height:42px;padding:0 12px">
+                <option value="all">${state.lang==="id"?"Semua Negara":"All Countries"}</option>
+                ${getAllCountries().map(c => `<option value="${c}" ${state.countryFilter === c ? "selected" : ""}>${getCountryDisplay(c)}</option>`).join("")}
+                <option value="other" ${state.countryFilter === "other" ? "selected" : ""}>${state.lang==="id"?"Lainnya (tanpa negara)":"Other (no country)"}</option>
+              </select>
+            </div>
           </div>
 
           <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -3119,7 +3185,7 @@
 
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <span class="muted" style="font-size:13px"><strong style="color:var(--text)">${allFiltered.length.toLocaleString("id-ID")}</strong> layanan tersedia</span>
-            ${state.newOrderSubCat || state.newOrderSearch ? `<button class="btn small ghost" data-reset-new-order-filters>Reset Filter</button>` : ""}
+            ${state.newOrderSubCat || state.newOrderSearch || state.countryFilter !== "all" ? `<button class="btn small ghost" data-reset-new-order-filters>Reset Filter</button>` : ""}
           </div>
 
           <div class="service-list">
@@ -3537,7 +3603,7 @@
           services
             .filter(s => cat === "all" || s[0] === cat)
             .filter(s => !NEGATIVE_SVC_WORDS.some(w => s[1].toLowerCase().includes(w)))
-            .filter(s => isIndonesiaOrNoCountry(s))
+            .filter(s => countryMatch(s))
             .map(s => getServiceSubCat(s))
         )].sort();
         const subCatSel = state.serviceSubCat || "";
@@ -3575,6 +3641,14 @@
                   <select class="select" data-service-subcat style="width:100%;min-height:42px;padding:0 12px">
                     <option value="">${id?"Semua Jenis":"All Types"}</option>
                     ${subCatAll.map(c => `<option value="${c}" ${subCatSel===c?"selected":""}>${c}</option>`).join("")}
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">${id?"Negara":"Country"}</label>
+                  <select class="select" data-service-country style="width:100%;min-height:42px;padding:0 12px">
+                    <option value="all">${id?"Semua Negara":"All Countries"}</option>
+                    ${getAllCountries().map(c => `<option value="${c}" ${state.countryFilter===c?"selected":""}>${getCountryDisplay(c)}</option>`).join("")}
+                    <option value="other" ${state.countryFilter==="other"?"selected":""}>${id?"Lainnya (tanpa negara)":"Other (no country)"}</option>
                   </select>
                 </div>
               </div>
@@ -4958,6 +5032,7 @@
           event.preventDefault();
           state.newOrderSubCat = "";
           state.newOrderSearch = "";
+          state.countryFilter = "all";
           state.newOrderPage = 1;
           render();
           return;
@@ -5059,6 +5134,12 @@
           render();
           return;
         }
+        if (event.target.matches("[data-new-order-country]")) {
+          state.countryFilter = event.target.value;
+          state.newOrderPage = 1;
+          render();
+          return;
+        }
         if (event.target.matches("[data-service-category]")) {
           setServiceFilter(event.target.value, state.serviceSearch);
           state.serviceSubCat = "";
@@ -5068,6 +5149,12 @@
         }
         if (event.target.matches("[data-service-subcat]")) {
           state.serviceSubCat = event.target.value;
+          state.servicesPage = 1;
+          render();
+          return;
+        }
+        if (event.target.matches("[data-service-country]")) {
+          state.countryFilter = event.target.value;
           state.servicesPage = 1;
           render();
           return;
