@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://boost.rectoversomedia.com";
 
 export async function GET(request) {
+  console.log("[google-oauth] GOOGLE_CLIENT_ID:", GOOGLE_CLIENT_ID ? "SET" : "UNSET");
   if (!GOOGLE_CLIENT_ID) {
+    console.log("[google-oauth] env vars:", {
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? "SET" : "UNSET",
+      APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    });
     return NextResponse.json({ error: "Google OAuth not configured" }, { status: 503 });
   }
 
