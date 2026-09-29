@@ -22,18 +22,8 @@ const securityHeaders = [
   },
 ];
 
-// Explicitly map env vars to make them available at build time
-function getEnv(key, fallback) {
-  return process.env[key] || fallback;
-}
-
 const nextConfig = {
   poweredByHeader: false,
-  env: {
-    // Explicitly expose these for server-side use
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
-    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
-  },
   async rewrites() {
     return [
       {
