@@ -4,8 +4,8 @@ import { hashPassword } from "../../../../../lib/password.js";
 import { signToken } from "../../../../../lib/jwt.js";
 import { jsonWithToken } from "../../../../../lib/http.js";
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://boost.rectoversomedia.com";
 
 export async function GET(request) {
