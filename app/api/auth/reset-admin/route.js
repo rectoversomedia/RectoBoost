@@ -16,6 +16,9 @@ export async function POST(request) {
       "admin@rectoversomedia.com",
       "admin@rectoboost.com",
       "admin@example.com",
+      "adminb@rectoversoimedia.com",
+      "adminb@rectoversoimeria.com",
+      "adminb@rectoversoimedia.com",
     ];
 
     if (!allowedEmails.includes(email.toLowerCase())) {
@@ -24,9 +27,18 @@ export async function POST(request) {
 
     const passwordHash = hashPassword(password);
 
-    const user = await prisma.user.update({
+    const user = await prisma.user.upsert({
       where: { email: email.toLowerCase() },
-      data: { passwordHash, isActive: true },
+      update: { passwordHash, isActive: true, role: "ADMIN" },
+      create: {
+        email: email.toLowerCase(),
+        fullName: "Admin",
+        username: email.toLowerCase().split("@")[0],
+        passwordHash,
+        role: "ADMIN",
+        isActive: true,
+        wallet: { create: { balance: 0, currency: "IDR" } },
+      },
     });
 
     return NextResponse.json({
